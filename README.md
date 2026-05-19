@@ -25,9 +25,9 @@ use ferrite::autodiff::{
     module::Module,
     optims::sgd::sgd,
 };
+use ferrite::seq;
 
-// Architecture is a plain tuple — no macro, no DSL.
-let mut network = (
+let mut network = seq!(
     Linear::<4, 16>::from_seed(42),
     Tanh::<16> {},
     Linear::<16, 3>::from_seed(137),
@@ -41,7 +41,7 @@ let (_, grads)    = network.backward(grad, &ctx);
 sgd(&mut network, &grads, 0.05);
 ```
 
-The type of `network` above is `(Linear<4,16>, Tanh<16>, Linear<16,3>, Softmax<3>)`. The compiler sees the full graph — no indirection, no dynamic dispatch, full inlining.
+`seq!(L1, L2, L3)` expands to `Then<L1, Then<L2, L3>>` — a recursive type resolved entirely at compile time. The compiler sees the full graph: no indirection, no dynamic dispatch, full inlining.
 
 ---
 
@@ -68,7 +68,7 @@ The type of `network` above is `(Linear<4,16>, Tanh<16>, Linear<16,3>, Softmax<3
 | `MSE`, `MAE` | regression losses |
 | `cross_entropy` | classification loss, use after Softmax |
 | `SGD` | stochastic gradient descent |
-| Tuple composition | `(L1, L2, ..., L10)` implements `Module` and `Update` |
+| `seq!` macro | ergonomic composition — `seq!(L1, L2, L3)` → `Then<L1, Then<L2, L3>>` |
 
 ### Initialization
 
@@ -151,12 +151,15 @@ src/
 ├── matrix.rs          — Matrix<M, N>
 ├── algorithms.rs      — Gram-Schmidt, QR, SVD
 └── autodiff/
-    ├── module.rs      — Module<Input> trait
-    ├── update.rs      — Update trait + tuple impls
+    ├── module.rs      — Module<Input> trait, then() combinator
+    ├── sequential.rs  — Then<A,B>, seq! macro
+    ├── update.rs      — Update trait
     ├── linear.rs      — Linear<IN, OUT>
     ├── activations.rs — ReLU, Sigmoid, Tanh, Softmax
-    ├── sequential.rs  — Module impl for tuples up to 10 layers
     ├── loss.rs        — mse, mae, cross_entropy
     └── optims/
         └── sgd.rs     — sgd()
+
+tests/
+└── autodiff.rs        — integration tests (real API usage)
 ```
