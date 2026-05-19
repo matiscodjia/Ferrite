@@ -6,8 +6,8 @@ use libm::sqrtf;
 
 #[derive(Clone, Copy)]
 pub struct Linear<const IN: usize, const OUT: usize> {
-    pub weights: Matrix<OUT, IN>,
-    pub bias: Vector<OUT>,
+    weights: Matrix<OUT, IN>,
+    bias: Vector<OUT>,
 }
 
 impl<const IN: usize, const OUT: usize> Linear<IN, OUT> {
@@ -61,8 +61,8 @@ fn xorshift_f32(state: &mut u64) -> f32 {
 
 #[derive(Clone, Copy)]
 pub struct LinearGrads<const IN: usize, const OUT: usize> {
-    pub weights_grads: Matrix<OUT, IN>,
-    pub bias_grad: Vector<OUT>,
+    weights_grads: Matrix<OUT, IN>,
+    bias_grad: Vector<OUT>,
 }
 
 impl<const IN: usize, const OUT: usize> Module<Vector<IN>> for Linear<IN, OUT> {

@@ -1,6 +1,6 @@
 use core::f32::EPSILON;
 
-use crate::matrix::{identity, Matrix};
+use crate::matrix::Matrix;
 use crate::vector::Vector;
 use libm::{fabsf, sqrtf};
 
@@ -182,7 +182,7 @@ pub fn svd<const M: usize, const N: usize>(
     mat: &Matrix<M, N>,
 ) -> (Matrix<M, N>, Vector<N>, Matrix<N, N>) {
     let mut b = *mat;
-    let mut v = identity::<N>();
+    let mut v = Matrix::<N, N>::identity();
     let max_iter = 100 * N * N;
     let mut iter = 0;
 
@@ -272,7 +272,7 @@ mod tests {
         assert_eq!(q * r, a);
         // Q is orthogonal
         let i_check = q.transpose() * q;
-        assert_eq!(i_check, crate::matrix::identity::<2>());
+        assert_eq!(i_check, Matrix::<2, 2>::identity());
     }
 
     #[test]
@@ -346,7 +346,7 @@ mod tests {
 
     #[test]
     fn test_identity_solver() {
-        let a = crate::matrix::identity::<3>();
+        let a = Matrix::<3, 3>::identity();
         let b = Vector::new([1.0, 2.0, 3.0]);
         let x = solve_linear_system(&a, &b).unwrap();
         assert_eq!(x, b);
@@ -384,13 +384,13 @@ mod tests {
         sigma_mat[(2, 2)] = sigma[2];
 
         assert_eq!(u * sigma_mat * v.transpose(), a);
-        assert_eq!(u.transpose() * u, crate::matrix::identity::<3>());
-        assert_eq!(v.transpose() * v, crate::matrix::identity::<3>());
+        assert_eq!(u.transpose() * u, Matrix::<3, 3>::identity());
+        assert_eq!(v.transpose() * v, Matrix::<3, 3>::identity());
     }
 
     #[test]
     fn test_svd_identity_3x3() {
-        let a = crate::matrix::identity::<3>();
+        let a = Matrix::<3, 3>::identity();
         let (_, sigma, _) = svd(&a);
         for i in 0..3 {
             assert!((sigma[i] - 1.0).abs() < 1e-5, "sigma[{i}] = {}", sigma[i]);
@@ -411,8 +411,8 @@ mod tests {
         for i in 0..4 { sigma_mat[(i, i)] = sigma[i]; }
 
         assert_eq!(u * sigma_mat * v.transpose(), a);
-        assert_eq!(u.transpose() * u, crate::matrix::identity::<4>());
-        assert_eq!(v.transpose() * v, crate::matrix::identity::<4>());
+        assert_eq!(u.transpose() * u, Matrix::<4, 4>::identity());
+        assert_eq!(v.transpose() * v, Matrix::<4, 4>::identity());
     }
 
     // --- Timing (cargo test -- --nocapture pour voir les résultats) ---

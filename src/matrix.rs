@@ -19,12 +19,12 @@ impl<const ROWS: usize, const COLS: usize> Matrix<ROWS, COLS> {
     }
 
     /// Returns the number of rows.
-    pub const fn get_rows(&self) -> usize {
+    pub const fn rows(&self) -> usize {
         ROWS
     }
 
     /// Returns the number of columns.
-    pub const fn get_cols(&self) -> usize {
+    pub const fn cols(&self) -> usize {
         COLS
     }
 
@@ -121,13 +121,15 @@ impl<const ROWS: usize, const COLS: usize> Matrix<ROWS, COLS> {
         result
     }
 }
-///Create identity matrix
-pub fn identity<const SIZE: usize>() -> Matrix<SIZE, SIZE> {
-    let mut result = Matrix::<SIZE, SIZE>::new();
-    for i in 0..SIZE {
-        result[(i, i)] = 1.0
+
+impl<const SIZE: usize> Matrix<SIZE, SIZE> {
+    pub fn identity() -> Self {
+        let mut result = Self::new();
+        for i in 0..SIZE {
+            result[(i, i)] = 1.0;
+        }
+        result
     }
-    result
 }
 
 // Operators for Static Matrices
@@ -203,8 +205,8 @@ mod tests {
     #[test]
     fn test_matrix_creation_and_size() {
         let m = Matrix::<2, 3>::new();
-        assert_eq!(m.get_rows(), 2);
-        assert_eq!(m.get_cols(), 3);
+        assert_eq!(m.rows(), 2);
+        assert_eq!(m.cols(), 3);
     }
 
     #[test]
@@ -256,8 +258,8 @@ mod tests {
     fn test_matmul_accumulate() {
         let mut res = Matrix::<1, 1>::new();
         res[(0, 0)] = 10.0;
-        let m1 = identity::<1>();
-        let m2 = identity::<1>();
+        let m1 = Matrix::<1, 1>::identity();
+        let m2 = Matrix::<1, 1>::identity();
         res.matmul_accumulate(&m1, &m2);
         assert_eq!(res[(0, 0)], 11.0);
     }
@@ -268,8 +270,8 @@ mod tests {
         m[(0, 0)] = 1.0;
         m[(0, 1)] = 2.0;
         let t = m.transpose();
-        assert_eq!(t.get_rows(), 2);
-        assert_eq!(t.get_cols(), 1);
+        assert_eq!(t.rows(), 2);
+        assert_eq!(t.cols(), 1);
         assert_eq!(t[(1, 0)], 2.0);
     }
 
@@ -293,7 +295,7 @@ mod tests {
 
     #[test]
     fn test_matrix_identity() {
-        let id = identity::<3>();
+        let id = Matrix::<3, 3>::identity();
         assert_eq!(id[(0, 0)], 1.0);
         assert_eq!(id[(0, 1)], 0.0);
         assert_eq!(id[(1, 1)], 1.0);
