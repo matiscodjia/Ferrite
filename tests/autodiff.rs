@@ -6,7 +6,7 @@ use ferrite::autodiff::loss::{cross_entropy, mse};
 use ferrite::autodiff::module::Module;
 use ferrite::autodiff::optims::sgd::sgd;
 use ferrite::seq;
-use ferrite::{Matrix, Vector};
+use ferrite::{Matrix, Scalar, Vector};
 
 #[test]
 fn test_integration_vector_matrix() {
@@ -75,7 +75,7 @@ fn test_convergence() {
             println!(
                 "epoch {:4} | loss {:.6}",
                 epoch,
-                total_loss / dataset.len() as f32
+                total_loss / dataset.len() as Scalar
             );
         }
     }
@@ -86,7 +86,7 @@ fn test_convergence() {
         let (loss, _) = mse(output, target);
         final_loss += loss;
     }
-    final_loss /= dataset.len() as f32;
+    final_loss /= dataset.len() as Scalar;
 
     println!("loss finale : {final_loss:.6}");
     assert!(
@@ -148,7 +148,7 @@ fn test_classifier() {
             println!(
                 "epoch {:4} | loss {:.6}",
                 epoch,
-                total_loss / dataset.len() as f32
+                total_loss / dataset.len() as Scalar
             );
         }
     }
@@ -178,7 +178,8 @@ fn test_iris() {
     let normalize = |raw: [f32; 4]| -> Vector<4> {
         let mut data = [0.0; 4];
         for i in 0..4 {
-            data[i] = (raw[i] - FEATURE_MIN[i]) / (FEATURE_MAX[i] - FEATURE_MIN[i]);
+            data[i] = (raw[i] as Scalar - FEATURE_MIN[i] as Scalar)
+                / (FEATURE_MAX[i] as Scalar - FEATURE_MIN[i] as Scalar);
         }
         Vector::new(data)
     };
@@ -228,7 +229,7 @@ fn test_iris() {
             println!(
                 "epoch {:4} | train loss {:.4}",
                 epoch,
-                total_loss / train.len() as f32
+                total_loss / train.len() as Scalar
             );
         }
     }
@@ -256,13 +257,13 @@ fn test_iris() {
         "train accuracy : {}/{} ({:.1}%)",
         train_acc,
         train.len(),
-        100.0 * train_acc as f32 / train.len() as f32
+        100.0 * train_acc as Scalar / train.len() as Scalar
     );
     println!(
         "test  accuracy : {}/{} ({:.1}%)",
         test_acc,
         test.len(),
-        100.0 * test_acc as f32 / test.len() as f32
+        100.0 * test_acc as Scalar / test.len() as Scalar
     );
 
     assert!(test_acc >= 27, "accuracy trop basse : {}/30", test_acc);

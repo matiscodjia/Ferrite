@@ -1,8 +1,8 @@
-use core::f32::EPSILON;
-
 use crate::matrix::Matrix;
+use crate::scalar::{fabs, sqrt, Scalar};
 use crate::vector::Vector;
-use libm::{fabsf, sqrtf};
+
+const EPSILON: Scalar = Scalar::EPSILON;
 
 /// Transforms a set of N vectors of size M into an orthonormal basis.
 ///
@@ -75,7 +75,7 @@ pub fn solve_upper_triangular<const N: usize>(
     for i in (0..N).rev() {
         let diag = r[(i, i)];
 
-        if fabsf(diag) < 1e-10 {
+        if fabs(diag) < 1e-10 {
             return None; // Singular matrix
         }
 
@@ -141,11 +141,11 @@ fn sort_svd<const M: usize, const N: usize>(
     }
 }
 
-pub fn jacobi_rotation(p: f32, q: f32, d: f32) -> (f32, f32) {
-    if fabsf(d) > EPSILON {
-        let tau: f32 = (q - p) / (2.0 * d);
-        let t = tau.signum() / (fabsf(tau) + sqrtf(1.0 + (tau * tau)));
-        let cos = 1.0 / sqrtf(1.0 + (t * t));
+pub fn jacobi_rotation(p: Scalar, q: Scalar, d: Scalar) -> (Scalar, Scalar) {
+    if fabs(d) > EPSILON {
+        let tau: Scalar = (q - p) / (2.0 * d);
+        let t = tau.signum() / (fabs(tau) + sqrt(1.0 + (tau * tau)));
+        let cos = 1.0 / sqrt(1.0 + (t * t));
         let sin = t * cos;
         (cos, sin)
     } else {
@@ -197,7 +197,7 @@ pub fn svd<const M: usize, const N: usize>(
                 let dot_qq = col_q.dot(&col_q);
                 let dot_pq = col_p.dot(&col_q);
 
-                if fabsf(dot_pq) < EPSILON * sqrtf(dot_pp * dot_qq) {
+                if fabs(dot_pq) < EPSILON * sqrt(dot_pp * dot_qq) {
                     continue;
                 }
 
@@ -423,10 +423,10 @@ mod tests {
         a2[(0, 0)] = 1.0; a2[(0, 1)] = 2.0; a2[(1, 0)] = 3.0; a2[(1, 1)] = 4.0;
 
         let mut a3 = Matrix::<3, 3>::new();
-        for i in 0..3 { for j in 0..3 { a3[(i, j)] = (i * 3 + j + 1) as f32; } }
+        for i in 0..3 { for j in 0..3 { a3[(i, j)] = (i * 3 + j + 1) as Scalar; } }
 
         let mut a4 = Matrix::<4, 4>::new();
-        for i in 0..4 { for j in 0..4 { a4[(i, j)] = (i * 4 + j + 1) as f32; } }
+        for i in 0..4 { for j in 0..4 { a4[(i, j)] = (i * 4 + j + 1) as Scalar; } }
 
         let n = 100_000u32;
 

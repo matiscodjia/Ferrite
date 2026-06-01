@@ -1,5 +1,6 @@
 use crate::autodiff::module::Module;
 
+#[derive(Clone)]
 pub struct Then<A, B> {
     pub(super) first: A,
     pub(super) second: B,
@@ -18,6 +19,16 @@ where
     type Output = B::Output;
     type Context = (A::Context, B::Context);
     type Gradients = (A::Gradients, B::Gradients);
+
+    fn then<Next>(self, next: Next) -> Then<Self, Next>
+    where
+        Next: Module<Self::Output>,
+    {
+        Then {
+            first: self,
+            second: next,
+        }
+    }
 
     fn forward(&self, x: Input) -> (Self::Output, Self::Context) {
         let (out1, ctx1) = self.first.forward(x);
@@ -45,7 +56,7 @@ macro_rules! seq {
 
 #[cfg(test)]
 mod tests {
-    use crate::autodiff::activations::{ReLU, Tanh};
+    use crate::autodiff::activations::{LeakyReLU, ReLU, Tanh};
     use crate::autodiff::linear::Linear;
     use crate::autodiff::loss::mse;
     use crate::autodiff::module::Module;
@@ -104,5 +115,44 @@ mod tests {
         let (output, ctx) = net.forward(input);
         let _ = net.backward(output, &ctx);
     }
-}
+    #[test]
+    fn seq_training_step_decreases_loss_leaky_relu() {
+        let mut net = seq!(
+            Linear::<2, 8>::from_seed(42),
+            LeakyReLU::<8>::new(0.01),
+            Linear::<8, 1>::from_seed(137)
+        );
+        let dataset = [
+            ([0.0, 0.0], [0.0]),
+            ([0.0, 1.0], [1.0]),
+            ([1.0, 0.0], [1.0]),
+            ([1.0, 1.0], [0.0]),
+        ];
 
+        let loss_before: crate::Scalar = dataset.iter().map(|(x, y)| {
+            let (out, _) = net.forward(Vector::new(*x));
+            mse(out, Vector::new(*y)).0
+        }).sum();
+
+        for _ in 0..50 {
+            for (x, y) in dataset {
+                let input = Vector::new(x);
+                let target = Vector::new(y);
+                let (output, ctx) = net.forward(input);
+                let (_, loss_grad) = mse(output, target);
+                let (_, grads) = net.backward(loss_grad, &ctx);
+                sgd(&mut net, &grads, 0.01);
+            }
+        }
+
+        let loss_after: crate::Scalar = dataset.iter().map(|(x, y)| {
+            let (out, _) = net.forward(Vector::new(*x));
+            mse(out, Vector::new(*y)).0
+        }).sum();
+
+        assert!(
+            loss_after < loss_before * 0.5,
+            "la loss devrait avoir significativement baissé : {loss_before:.4} → {loss_after:.4}"
+        );
+    }
+}

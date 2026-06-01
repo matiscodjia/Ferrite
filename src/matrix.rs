@@ -1,18 +1,18 @@
+use crate::scalar::{fabs, Scalar};
 use crate::vector::Vector;
 use core::cmp::PartialEq;
 use core::ops::{Add, Index, IndexMut, Mul, Sub};
-use libm::fabsf;
 
 /// A Static Matrix of ROWS x COLS, stored entirely on the stack.
 /// Uses a 2D array to remain 100% static and compatible with stable Rust.
 #[derive(Clone, Copy, Debug)]
 pub struct Matrix<const ROWS: usize, const COLS: usize> {
-    data: [[f32; COLS]; ROWS],
+    data: [[Scalar; COLS]; ROWS],
 }
 
 impl<const ROWS: usize, const COLS: usize> Matrix<ROWS, COLS> {
     /// Creates a new matrix filled with zeros.
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             data: [[0.0; COLS]; ROWS],
         }
@@ -111,7 +111,7 @@ impl<const ROWS: usize, const COLS: usize> Matrix<ROWS, COLS> {
     }
 
     /// Scales the matrix by a coefficient.
-    pub fn scale(&self, coef: f32) -> Self {
+    pub fn scale(&self, coef: Scalar) -> Self {
         let mut result = Self::new();
         for i in 0..ROWS {
             for j in 0..COLS {
@@ -172,7 +172,7 @@ impl<const ROWS: usize, const COLS: usize> PartialEq for Matrix<ROWS, COLS> {
         let epsilon = 1e-5;
         for i in 0..ROWS {
             for j in 0..COLS {
-                if fabsf(self.data[i][j] - other.data[i][j]) >= epsilon {
+                if fabs(self.data[i][j] - other.data[i][j]) >= epsilon {
                     return false;
                 }
             }
@@ -183,7 +183,7 @@ impl<const ROWS: usize, const COLS: usize> PartialEq for Matrix<ROWS, COLS> {
 
 /// Retrieves a value at (row, col).
 impl<const ROWS: usize, const COLS: usize> Index<(usize, usize)> for Matrix<ROWS, COLS> {
-    type Output = f32;
+    type Output = Scalar;
     fn index(&self, (row, col): (usize, usize)) -> &Self::Output {
         &self.data[row][col]
     }
@@ -250,8 +250,8 @@ mod tests {
         m2[(1, 0)] = 6.0;
 
         let res = m1 * m2;
-        assert_eq!(res[(0, 0)], 17.0); // 1*5 + 2*6
-        assert_eq!(res[(1, 0)], 39.0); // 3*5 + 4*6
+        assert_eq!(res[(0, 0)], 17.0);
+        assert_eq!(res[(1, 0)], 39.0);
     }
 
     #[test]

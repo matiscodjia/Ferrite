@@ -131,6 +131,53 @@ No allocator needed. The library produces no heap calls — verified by design.
 
 ---
 
+## Gradient checking
+
+All analytical gradients are verified against numerical differentiation using centered finite differences.
+
+**Protocol**
+
+For each parameter θᵢ, the numerical gradient is estimated as:
+
+```
+∂L/∂θᵢ ≈ (L(θᵢ + ε) − L(θᵢ − ε)) / 2ε
+```
+
+The relative error per parameter uses the max as denominator to avoid inflating small-gradient errors:
+
+```
+eᵢ = |∂L/∂θᵢ (analytical) − ∂L/∂θᵢ (numerical)| / max(|analytical|, |numerical|, 1e-8)
+```
+
+**Results**
+
+| Mode | ε | mean error | max error |
+|---|---|---|---|
+| `f32` (default) | 1e-4 | ~6e-4 | ~2e-3 |
+| `f64` (`--features f64`) | 1e-4 | <1e-6 | <1e-5 |
+
+In `f64`, errors are well below the theoretical floor for centered differences (~ε²), confirming the analytical gradients are correct. The `f32` errors are consistent with floating-point precision limits and have no practical impact on training.
+
+**Running the check**
+
+```bash
+# f32 (default)
+cargo test grad_check -- --nocapture
+
+# f64 — higher precision validation
+cargo test grad_check --features f64 -- --nocapture
+```
+
+The checker is implemented in `src/autodiff/gradients_checking.rs`. It requires `N` (total parameter count) as a const generic — `IN*OUT + OUT` per `Linear` layer, 0 for activations:
+
+```rust
+// Linear<2,4> → Tanh<4> → Linear<4,1> : 12 + 0 + 5 = 17
+let result = GradChecker::check::<17, _, _>(net, input, target, mse, 1e-4);
+assert!(result.max_relative_error < 1e-2);
+```
+
+---
+
 ## Roadmap
 
 - [ ] STM32 Nucleo deployment — live training on sensor data via ADC
@@ -147,18 +194,22 @@ No allocator needed. The library produces no heap calls — verified by design.
 ```
 src/
 ├── lib.rs
+├── scalar.rs          — Scalar type alias (f32 default, f64 via --features f64)
 ├── vector.rs          — Vector<N>
 ├── matrix.rs          — Matrix<M, N>
 ├── algorithms.rs      — Gram-Schmidt, QR, SVD
 └── autodiff/
-    ├── module.rs      — Module<Input> trait, then() combinator
-    ├── sequential.rs  — Then<A,B>, seq! macro
-    ├── update.rs      — Update trait
-    ├── linear.rs      — Linear<IN, OUT>
-    ├── activations.rs — ReLU, Sigmoid, Tanh, Softmax
-    ├── loss.rs        — mse, mae, cross_entropy
+    ├── module.rs              — Module<Input> trait
+    ├── sequential.rs          — Then<A,B>, seq! macro
+    ├── update.rs              — Update trait
+    ├── perturb.rs             — Perturb trait (parameter indexing for grad check)
+    ├── flat_grads.rs          — FlatGrads trait (gradient serialization)
+    ├── gradients_checking.rs  — GradChecker
+    ├── linear.rs              — Linear<IN, OUT>
+    ├── activations.rs         — ReLU, LeakyReLU, Sigmoid, Tanh, Softmax
+    ├── loss.rs                — mse, mae, cross_entropy
     └── optims/
-        └── sgd.rs     — sgd()
+        └── sgd.rs             — sgd()
 
 tests/
 └── autodiff.rs        — integration tests (real API usage)

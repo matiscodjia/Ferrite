@@ -16,3 +16,5 @@ libm = { version = "0.2.16", default-features = false }
 # Pour compiler pour STM32 : cargo build --target thumbv7em-none-eabihf --no-default-features
 default = ["std"]
 std = []
+# Active f64 partout dans le moteur (debug/gradient checking) — pas pour l'embarqué.
+f64 = []

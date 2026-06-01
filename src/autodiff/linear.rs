@@ -1,8 +1,10 @@
+use crate::autodiff::flat_grads::FlatGrads;
 use crate::autodiff::module::Module;
+use crate::autodiff::perturb::Perturb;
 use crate::autodiff::update::Update;
 use crate::matrix::Matrix;
+use crate::scalar::{sqrt, Scalar};
 use crate::vector::Vector;
-use libm::sqrtf;
 
 #[derive(Clone, Copy)]
 pub struct Linear<const IN: usize, const OUT: usize> {
@@ -11,7 +13,6 @@ pub struct Linear<const IN: usize, const OUT: usize> {
 }
 
 impl<const IN: usize, const OUT: usize> Linear<IN, OUT> {
-    /// Tous les poids à zéro — le réseau ne peut pas apprendre avec ça (dead neurons sur ReLU).
     pub fn zeros() -> Self {
         Linear {
             weights: Matrix::new(),
@@ -19,27 +20,22 @@ impl<const IN: usize, const OUT: usize> Linear<IN, OUT> {
         }
     }
 
-    /// Poids fournis explicitement — utile pour charger un modèle pré-entraîné.
     pub fn from_weights(weights: Matrix<OUT, IN>, bias: Vector<OUT>) -> Self {
         Linear { weights, bias }
     }
 
-    /// Xavier uniform + Xorshift64 PRNG. Passe n'importe quelle graine non-nulle.
-    /// Sur MCU, lis ton RNG hardware et passe la valeur : `Linear::from_seed(hal::rng::read())`.
     pub fn from_seed(seed: u64) -> Self {
         let mut state = if seed == 0 { 1 } else { seed };
 
-        // Xavier uniform : valeurs dans [-limit, limit], limit = sqrt(6 / (IN + OUT))
-        let limit = sqrtf(6.0 / (IN + OUT) as f32);
+        let limit = sqrt(6.0 / (IN + OUT) as Scalar);
 
         let mut weights = Matrix::<OUT, IN>::new();
         for i in 0..OUT {
             for j in 0..IN {
-                weights[(i, j)] = xorshift_f32(&mut state) * limit;
+                weights[(i, j)] = xorshift_scalar(&mut state) * limit;
             }
         }
 
-        // Biais initialisés à zéro — convention standard
         Linear {
             weights,
             bias: Vector::new([0.0; OUT]),
@@ -47,16 +43,13 @@ impl<const IN: usize, const OUT: usize> Linear<IN, OUT> {
     }
 }
 
-/// Xorshift64 — PRNG minimal, no_std, zéro dépendance.
-/// Retourne un f32 dans [-1.0, 1.0].
-fn xorshift_f32(state: &mut u64) -> f32 {
+fn xorshift_scalar(state: &mut u64) -> Scalar {
     let mut x = *state;
     x ^= x << 13;
     x ^= x >> 7;
     x ^= x << 17;
     *state = x;
-    // Mappe [0, u64::MAX] → [-1.0, 1.0]
-    (x as f32) / (u64::MAX as f32) * 2.0 - 1.0
+    (x as Scalar) / (u64::MAX as Scalar) * 2.0 - 1.0
 }
 
 #[derive(Clone, Copy)]
@@ -101,9 +94,41 @@ impl<const IN: usize, const OUT: usize> Module<Vector<IN>> for Linear<IN, OUT> {
     }
 }
 
+impl<const IN: usize, const OUT: usize> FlatGrads for Linear<IN, OUT> {
+    type Gradients = LinearGrads<IN, OUT>;
+    fn write_grads(grads: &Self::Gradients, buf: &mut [Scalar], offset: &mut usize) {
+        for row in 0..OUT {
+            for col in 0..IN {
+                buf[*offset] = grads.weights_grads[(row, col)];
+                *offset += 1;
+            }
+        }
+        for i in 0..OUT {
+            buf[*offset] = grads.bias_grad[i];
+            *offset += 1;
+        }
+    }
+}
+
+impl<const IN: usize, const OUT: usize> Perturb for Linear<IN, OUT> {
+    fn num_params(&self) -> usize {
+        IN * OUT + OUT
+    }
+
+    fn perturb(&mut self, idx: usize, delta: Scalar) {
+        if idx < IN * OUT {
+            let row = idx / IN;
+            let col = idx % IN;
+            self.weights[(row, col)] += delta;
+        } else {
+            self.bias[idx - IN * OUT] += delta;
+        }
+    }
+}
+
 impl<const IN: usize, const OUT: usize> Update for Linear<IN, OUT> {
     type Gradients = LinearGrads<IN, OUT>;
-    fn update(&mut self, grads: &Self::Gradients, lr: f32) {
+    fn update(&mut self, grads: &Self::Gradients, lr: Scalar) {
         self.weights = self.weights - grads.weights_grads.scale(lr);
         self.bias = self.bias - grads.bias_grad * lr;
     }
