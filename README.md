@@ -87,7 +87,7 @@ Linear::<4, 8>::from_seed(hal::rng::read())
 
 ## Performance
 
-Benchmarks on Apple M3 (release mode), single sample, batch size 1:
+Benchmarks on Apple M4 pro (release mode), single sample, batch size 1:
 
 | Network | Forward | Forward + Backward | Full step |
 |---|---|---|---|
