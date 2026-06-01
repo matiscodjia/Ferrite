@@ -1,11 +1,13 @@
+use crate::autodiff::params::Params;
 use crate::autodiff::sequential::Then;
 
-pub trait Module<Input>: Sized {
+pub trait Module<Input>: Params {
     type Output;
     type Context;
-    type Gradients;
+
     fn then<Next>(self, next: Next) -> Then<Self, Next>
     where
+        Self: Sized,
         Next: Module<Self::Output>,
     {
         Then {

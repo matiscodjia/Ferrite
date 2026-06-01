@@ -4,7 +4,8 @@ use ferrite::autodiff::activations::{ReLU, Softmax, Tanh};
 use ferrite::autodiff::linear::Linear;
 use ferrite::autodiff::loss::{cross_entropy, mse};
 use ferrite::autodiff::module::Module;
-use ferrite::autodiff::optims::sgd::sgd;
+use ferrite::autodiff::optims::sgd::Sgd;
+use ferrite::autodiff::optims::train::train_step;
 use ferrite::seq;
 use ferrite::{Matrix, Scalar, Vector};
 
@@ -12,7 +13,6 @@ use ferrite::{Matrix, Scalar, Vector};
 fn test_integration_vector_matrix() {
     let v = Vector::new([1.0, 2.0]);
     assert_eq!(v.dim(), 2);
-
     let m = Matrix::<2, 2>::new();
     assert_eq!(m.rows(), 2);
 }
@@ -24,32 +24,24 @@ fn test_mlp_training_step() {
         ReLU::<4> {},
         Linear::<4, 1>::from_seed(137)
     );
-
     let input = Vector::new([1.0, 0.5]);
     let target = Vector::new([1.0]);
 
-    let (output, ctx) = network.forward(input);
-    let (loss, loss_grad) = mse(output, target);
-    let (_, grads) = network.backward(loss_grad, &ctx);
-    sgd(&mut network, &grads, 0.01);
+    let mut opt = Sgd::new(0.01);
+    let loss = train_step(&mut network, &mut opt, input, target, mse);
 
     let (output2, _) = network.forward(input);
     let (loss2, _) = mse(output2, target);
-
-    assert!(
-        loss2 < loss,
-        "loss should decrease after one SGD step: {loss2} >= {loss}"
-    );
+    assert!(loss2 < loss, "loss should decrease after one SGD step: {loss2} >= {loss}");
 }
 
 // cargo test test_convergence -- --nocapture
 #[test]
 fn test_convergence() {
-    // Fonction cible : f(x1, x2) = x1 * x2
     let dataset: [(Vector<2>, Vector<1>); 4] = [
-        (Vector::new([1.0, 1.0]), Vector::new([1.0])),
-        (Vector::new([1.0, -1.0]), Vector::new([-1.0])),
-        (Vector::new([-1.0, 1.0]), Vector::new([-1.0])),
+        (Vector::new([1.0, 1.0]),   Vector::new([1.0])),
+        (Vector::new([1.0, -1.0]),  Vector::new([-1.0])),
+        (Vector::new([-1.0, 1.0]),  Vector::new([-1.0])),
         (Vector::new([-1.0, -1.0]), Vector::new([1.0])),
     ];
 
@@ -59,70 +51,38 @@ fn test_convergence() {
         Linear::<8, 1>::from_seed(137)
     );
 
-    let lr = 0.05;
-    let epochs = 2000;
-
-    for epoch in 0..=epochs {
+    let mut opt = Sgd::new(0.05);
+    for epoch in 0..=2000 {
         let mut total_loss = 0.0;
         for &(input, target) in &dataset {
-            let (output, ctx) = network.forward(input);
-            let (loss, loss_grad) = mse(output, target);
-            total_loss += loss;
-            let (_, grads) = network.backward(loss_grad, &ctx);
-            sgd(&mut network, &grads, lr);
+            total_loss += train_step(&mut network, &mut opt, input, target, mse);
         }
         if epoch % 200 == 0 {
-            println!(
-                "epoch {:4} | loss {:.6}",
-                epoch,
-                total_loss / dataset.len() as Scalar
-            );
+            println!("epoch {:4} | loss {:.6}", epoch, total_loss / dataset.len() as Scalar);
         }
     }
 
     let mut final_loss = 0.0;
     for &(input, target) in &dataset {
         let (output, _) = network.forward(input);
-        let (loss, _) = mse(output, target);
-        final_loss += loss;
+        final_loss += mse(output, target).0;
     }
     final_loss /= dataset.len() as Scalar;
 
     println!("loss finale : {final_loss:.6}");
-    assert!(
-        final_loss < 0.05,
-        "réseau n'a pas convergé : loss finale = {final_loss:.6}"
-    );
+    assert!(final_loss < 0.05, "réseau n'a pas convergé : loss finale = {final_loss:.6}");
 }
 
 // cargo test test_classifier -- --nocapture
 #[test]
 fn test_classifier() {
     let dataset: [(Vector<4>, Vector<3>); 6] = [
-        (
-            Vector::new([1.0, 0.0, 0.0, 0.0]),
-            Vector::new([1.0, 0.0, 0.0]),
-        ),
-        (
-            Vector::new([0.9, 0.1, 0.0, 0.0]),
-            Vector::new([1.0, 0.0, 0.0]),
-        ),
-        (
-            Vector::new([0.0, 1.0, 0.0, 0.0]),
-            Vector::new([0.0, 1.0, 0.0]),
-        ),
-        (
-            Vector::new([0.1, 0.8, 0.1, 0.0]),
-            Vector::new([0.0, 1.0, 0.0]),
-        ),
-        (
-            Vector::new([0.0, 0.0, 1.0, 1.0]),
-            Vector::new([0.0, 0.0, 1.0]),
-        ),
-        (
-            Vector::new([0.0, 0.1, 0.8, 0.9]),
-            Vector::new([0.0, 0.0, 1.0]),
-        ),
+        (Vector::new([1.0, 0.0, 0.0, 0.0]), Vector::new([1.0, 0.0, 0.0])),
+        (Vector::new([0.9, 0.1, 0.0, 0.0]), Vector::new([1.0, 0.0, 0.0])),
+        (Vector::new([0.0, 1.0, 0.0, 0.0]), Vector::new([0.0, 1.0, 0.0])),
+        (Vector::new([0.1, 0.8, 0.1, 0.0]), Vector::new([0.0, 1.0, 0.0])),
+        (Vector::new([0.0, 0.0, 1.0, 1.0]), Vector::new([0.0, 0.0, 1.0])),
+        (Vector::new([0.0, 0.1, 0.8, 0.9]), Vector::new([0.0, 0.0, 1.0])),
     ];
 
     let mut network = seq!(
@@ -132,39 +92,23 @@ fn test_classifier() {
         Softmax::<3> {}
     );
 
-    let lr = 0.05;
-    let epochs = 1000;
-
-    for epoch in 0..=epochs {
+    let mut opt = Sgd::new(0.05);
+    for epoch in 0..=1000 {
         let mut total_loss = 0.0;
         for &(input, target) in &dataset {
-            let (output, ctx) = network.forward(input);
-            let (loss, loss_grad) = cross_entropy(output, target);
-            total_loss += loss;
-            let (_, grads) = network.backward(loss_grad, &ctx);
-            sgd(&mut network, &grads, lr);
+            total_loss += train_step(&mut network, &mut opt, input, target, cross_entropy);
         }
         if epoch % 100 == 0 {
-            println!(
-                "epoch {:4} | loss {:.6}",
-                epoch,
-                total_loss / dataset.len() as Scalar
-            );
+            println!("epoch {:4} | loss {:.6}", epoch, total_loss / dataset.len() as Scalar);
         }
     }
 
     let mut correct = 0;
     for &(input, target) in &dataset {
         let (probs, _) = network.forward(input);
-        let pred = (0..3)
-            .max_by(|&a, &b| probs[a].partial_cmp(&probs[b]).unwrap())
-            .unwrap();
-        let true_class = (0..3)
-            .max_by(|&a, &b| target[a].partial_cmp(&target[b]).unwrap())
-            .unwrap();
-        if pred == true_class {
-            correct += 1;
-        }
+        let pred = (0..3).max_by(|&a, &b| probs[a].partial_cmp(&probs[b]).unwrap()).unwrap();
+        let true_class = (0..3).max_by(|&a, &b| target[a].partial_cmp(&target[b]).unwrap()).unwrap();
+        if pred == true_class { correct += 1; }
     }
     println!("accuracy : {}/{}", correct, dataset.len());
     assert_eq!(correct, dataset.len(), "le classifieur n'a pas convergé");
@@ -213,24 +157,14 @@ fn test_iris() {
         Softmax::<3> {}
     );
 
-    let lr = 0.05;
-    let epochs = 2000;
-
-    for epoch in 0..=epochs {
+    let mut opt = Sgd::new(0.05);
+    for epoch in 0..=2000 {
         let mut total_loss = 0.0;
         for &(input, target) in &train {
-            let (output, ctx) = network.forward(input);
-            let (loss, loss_grad) = cross_entropy(output, target);
-            total_loss += loss;
-            let (_, grads) = network.backward(loss_grad, &ctx);
-            sgd(&mut network, &grads, lr);
+            total_loss += train_step(&mut network, &mut opt, input, target, cross_entropy);
         }
         if epoch % 200 == 0 {
-            println!(
-                "epoch {:4} | train loss {:.4}",
-                epoch,
-                total_loss / train.len() as Scalar
-            );
+            println!("epoch {:4} | train loss {:.4}", epoch, total_loss / train.len() as Scalar);
         }
     }
 
@@ -238,34 +172,17 @@ fn test_iris() {
         let mut correct = 0;
         for &(input, target) in dataset {
             let (probs, _) = network.forward(input);
-            let pred = (0..3)
-                .max_by(|&a, &b| probs[a].partial_cmp(&probs[b]).unwrap())
-                .unwrap();
-            let true_class = (0..3)
-                .max_by(|&a, &b| target[a].partial_cmp(&target[b]).unwrap())
-                .unwrap();
-            if pred == true_class {
-                correct += 1;
-            }
+            let pred = (0..3).max_by(|&a, &b| probs[a].partial_cmp(&probs[b]).unwrap()).unwrap();
+            let true_class = (0..3).max_by(|&a, &b| target[a].partial_cmp(&target[b]).unwrap()).unwrap();
+            if pred == true_class { correct += 1; }
         }
         correct
     };
 
     let train_acc = accuracy(&train);
     let test_acc = accuracy(&test);
-    println!(
-        "train accuracy : {}/{} ({:.1}%)",
-        train_acc,
-        train.len(),
-        100.0 * train_acc as Scalar / train.len() as Scalar
-    );
-    println!(
-        "test  accuracy : {}/{} ({:.1}%)",
-        test_acc,
-        test.len(),
-        100.0 * test_acc as Scalar / test.len() as Scalar
-    );
-
+    println!("train accuracy : {}/{} ({:.1}%)", train_acc, train.len(), 100.0 * train_acc as Scalar / train.len() as Scalar);
+    println!("test  accuracy : {}/{} ({:.1}%)", test_acc, test.len(), 100.0 * test_acc as Scalar / test.len() as Scalar);
     assert!(test_acc >= 27, "accuracy trop basse : {}/30", test_acc);
 }
 
@@ -273,90 +190,47 @@ fn test_iris() {
 #[test]
 fn bench_autodiff() {
     let input = Vector::new([1.0, 0.5]);
-    let target_2 = Vector::new([1.0]);
+    let target = Vector::new([1.0]);
 
-    let mut net_s = seq!(
-        Linear::<2, 4>::from_seed(42),
-        Tanh::<4> {},
-        Linear::<4, 1>::from_seed(99)
-    );
+    let mut net_s = seq!(Linear::<2, 4>::from_seed(42), Tanh::<4> {}, Linear::<4, 1>::from_seed(99));
     let mut net_m = seq!(
-        Linear::<2, 8>::from_seed(42),
-        Tanh::<8> {},
-        Linear::<8, 4>::from_seed(99),
-        Tanh::<4> {},
+        Linear::<2, 8>::from_seed(42), Tanh::<8> {},
+        Linear::<8, 4>::from_seed(99), Tanh::<4> {},
         Linear::<4, 1>::from_seed(7)
     );
 
     let n = 10_000u32;
 
     let t = std::time::Instant::now();
-    for _ in 0..n {
-        let _ = net_s.forward(input);
-    }
-    println!(
-        "forward  2→4→1   x{n}: {:?} ({:.1}ns/iter)",
-        t.elapsed(),
-        t.elapsed().as_nanos() as f64 / n as f64
-    );
+    for _ in 0..n { let _ = net_s.forward(input); }
+    println!("forward  2→4→1   x{n}: {:?} ({:.1}ns/iter)", t.elapsed(), t.elapsed().as_nanos() as f64 / n as f64);
 
     let t = std::time::Instant::now();
-    for _ in 0..n {
-        let _ = net_m.forward(input);
-    }
-    println!(
-        "forward  2→8→4→1 x{n}: {:?} ({:.1}ns/iter)",
-        t.elapsed(),
-        t.elapsed().as_nanos() as f64 / n as f64
-    );
+    for _ in 0..n { let _ = net_m.forward(input); }
+    println!("forward  2→8→4→1 x{n}: {:?} ({:.1}ns/iter)", t.elapsed(), t.elapsed().as_nanos() as f64 / n as f64);
 
     let t = std::time::Instant::now();
     for _ in 0..n {
         let (output, ctx) = net_s.forward(input);
-        let (_, grad) = mse(output, target_2);
+        let (_, grad) = mse(output, target);
         let _ = net_s.backward(grad, &ctx);
     }
-    println!(
-        "fwd+bwd  2→4→1   x{n}: {:?} ({:.1}ns/iter)",
-        t.elapsed(),
-        t.elapsed().as_nanos() as f64 / n as f64
-    );
+    println!("fwd+bwd  2→4→1   x{n}: {:?} ({:.1}ns/iter)", t.elapsed(), t.elapsed().as_nanos() as f64 / n as f64);
 
     let t = std::time::Instant::now();
     for _ in 0..n {
         let (output, ctx) = net_m.forward(input);
-        let (_, grad) = mse(output, target_2);
+        let (_, grad) = mse(output, target);
         let _ = net_m.backward(grad, &ctx);
     }
-    println!(
-        "fwd+bwd  2→8→4→1 x{n}: {:?} ({:.1}ns/iter)",
-        t.elapsed(),
-        t.elapsed().as_nanos() as f64 / n as f64
-    );
+    println!("fwd+bwd  2→8→4→1 x{n}: {:?} ({:.1}ns/iter)", t.elapsed(), t.elapsed().as_nanos() as f64 / n as f64);
+
+    let mut opt = Sgd::new(0.01);
+    let t = std::time::Instant::now();
+    for _ in 0..n { train_step(&mut net_s, &mut opt, input, target, mse); }
+    println!("step     2→4→1   x{n}: {:?} ({:.1}ns/iter)", t.elapsed(), t.elapsed().as_nanos() as f64 / n as f64);
 
     let t = std::time::Instant::now();
-    for _ in 0..n {
-        let (output, ctx) = net_s.forward(input);
-        let (_, grad) = mse(output, target_2);
-        let (_, grads) = net_s.backward(grad, &ctx);
-        sgd(&mut net_s, &grads, 0.01);
-    }
-    println!(
-        "step     2→4→1   x{n}: {:?} ({:.1}ns/iter)",
-        t.elapsed(),
-        t.elapsed().as_nanos() as f64 / n as f64
-    );
-
-    let t = std::time::Instant::now();
-    for _ in 0..n {
-        let (output, ctx) = net_m.forward(input);
-        let (_, grad) = mse(output, target_2);
-        let (_, grads) = net_m.backward(grad, &ctx);
-        sgd(&mut net_m, &grads, 0.01);
-    }
-    println!(
-        "step     2→8→4→1 x{n}: {:?} ({:.1}ns/iter)",
-        t.elapsed(),
-        t.elapsed().as_nanos() as f64 / n as f64
-    );
+    for _ in 0..n { train_step(&mut net_m, &mut opt, input, target, mse); }
+    println!("step     2→8→4→1 x{n}: {:?} ({:.1}ns/iter)", t.elapsed(), t.elapsed().as_nanos() as f64 / n as f64);
 }

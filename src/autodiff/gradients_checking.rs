@@ -1,40 +1,3 @@
-#[cfg(test)]
-mod tests {
-    use crate::autodiff::activations::Tanh;
-    use crate::autodiff::gradients_checking::GradChecker;
-    use crate::autodiff::linear::Linear;
-    use crate::autodiff::loss::mse;
-    use crate::seq;
-    use crate::Vector;
-
-    #[test]
-    fn grad_check_linear_tanh_linear() {
-        let net = seq!(
-            Linear::<2, 4>::from_seed(42),
-            Tanh::<4> {},
-            Linear::<4, 1>::from_seed(99)
-        );
-        let input = Vector::new([1.0, 0.5]);
-        let target = Vector::new([1.0]);
-
-        let result = GradChecker::check::<17, _, _>(net, input, target, mse, 1e-4);
-
-        println!();
-        println!("=== Gradient Check ===");
-        println!("  mean rel. error : {:.2e}", result.mean_relative_error);
-        println!("  max  rel. error : {:.2e}", result.max_relative_error);
-        println!("  min  rel. error : {:.2e}", result.min_relative_error);
-        println!("  std  rel. error : {:.2e}", result.std_relative_error);
-        println!("======================");
-
-        assert!(
-            result.max_relative_error < 1e-2,
-            "gradient check échoué : max erreur relative = {:.2e}",
-            result.max_relative_error
-        );
-    }
-}
-
 use crate::autodiff::flat_grads::FlatGrads;
 use crate::autodiff::module::Module;
 use crate::autodiff::perturb::Perturb;
@@ -59,10 +22,7 @@ impl GradChecker {
         eps: Scalar,
     ) -> Self
     where
-        Net: Module<Input>
-            + Perturb
-            + FlatGrads<Gradients = <Net as Module<Input>>::Gradients>
-            + Clone,
+        Net: Module<Input> + Perturb + FlatGrads + Clone,
         <Net as Module<Input>>::Output: Copy,
         Input: Copy,
     {

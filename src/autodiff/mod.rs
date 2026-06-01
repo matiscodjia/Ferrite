@@ -5,6 +5,7 @@ pub mod linear;
 pub mod loss;
 pub mod module;
 pub mod optims;
+pub mod params;
 pub mod perturb;
 pub mod sequential;
 pub mod update;
