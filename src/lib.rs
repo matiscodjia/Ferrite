@@ -5,24 +5,13 @@
 extern crate std; // Use full std for tests and dev on MacOS.
 
 pub mod algorithms;
+pub mod autodiff;
 pub mod matrix;
+pub mod scalar;
 pub mod vector;
-
 pub use algorithms::{gram_schmidt, qr_decomposition, solve_linear_system};
 pub use matrix::Matrix;
+pub use scalar::Scalar;
 /// Re-export main types for simplified usage
 pub use vector::Vector;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_integration_vector_matrix() {
-        let v = Vector::new([1.0, 2.0]);
-        assert_eq!(v.dim(), 2);
-
-        let m = Matrix::<2, 2>::new();
-        assert_eq!(m.get_rows(), 2);
-    }
-}

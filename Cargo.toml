@@ -2,13 +2,19 @@
 name = "ferrite"
 version = "0.1.0"
 edition = "2021"
-description = "A no_std machine learning framework for microcontrollers"
-keywords = ["no_std", "embedded", "machine-learning", "linear-algebra", "stm32"]
-categories = ["no-std", "science", "embedded"]
+description = "Static deep learning framework for bare-metal microcontrollers — no_std, no heap, no runtime"
+repository = "https://github.com/matiscodjia/ferrite"
+license = "MIT"
+keywords = ["no-std", "embedded", "deep-learning", "neural-network", "microcontroller"]
+categories = ["no-std", "embedded", "science"]
 
 [dependencies]
 libm = { version = "0.2.16", default-features = false }
 
 [features]
+# Default : std activé pour le développement et les tests sur Mac.
+# Pour compiler pour STM32 : cargo build --target thumbv7em-none-eabihf --no-default-features
 default = ["std"]
 std = []
+# Active f64 partout dans le moteur (debug/gradient checking) — pas pour l'embarqué.
+f64 = []

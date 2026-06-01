@@ -1,133 +1,216 @@
 # Ferrite
 
-**A no_std machine learning framework for microcontrollers, written in Rust.**
+Static deep learning framework for bare-metal microcontrollers, written in Rust.
 
-Ferrite brings high-performance linear algebra and machine learning to resource-constrained embedded systems — with zero heap allocation, compile-time memory safety, and hardware-accelerated f32 arithmetic on Cortex-M4/M7.
+No heap. No `std`. No runtime. Everything lives on the stack, all sizes are known at compile time via const generics. Designed to train and run neural networks directly on STM32 and similar Cortex-M devices.
+
+---
+
+## Design principles
+
+- **Zero allocation** — no `Vec`, no `Box`, no allocator required
+- **Static graphs** — network architecture is a type, resolved entirely at compile time
+- **Portable** — `no_std` by default, `std` feature for development on desktop
+- **Single dependency** — `libm` for `sin`, `exp`, `sqrt` and friends
+
+---
+
+## Quick start
+
+```rust
+use ferrite::autodiff::{
+    activations::{Tanh, Softmax},
+    linear::Linear,
+    loss::cross_entropy,
+    module::Module,
+    optims::sgd::sgd,
+};
+use ferrite::seq;
+
+let mut network = seq!(
+    Linear::<4, 16>::from_seed(42),
+    Tanh::<16> {},
+    Linear::<16, 3>::from_seed(137),
+    Softmax::<3> {},
+);
+
+// One training step.
+let (output, ctx) = network.forward(input);
+let (loss, grad)  = cross_entropy(output, target);
+let (_, grads)    = network.backward(grad, &ctx);
+sgd(&mut network, &grads, 0.05);
+```
+
+`seq!(L1, L2, L3)` expands to `Then<L1, Then<L2, L3>>` — a recursive type resolved entirely at compile time. The compiler sees the full graph: no indirection, no dynamic dispatch, full inlining.
+
+---
+
+## What is implemented
+
+### Linear algebra
+
+| | |
+|---|---|
+| `Vector<N>` | L1 / L2 / Linf norms, dot product, projection, Hadamard product |
+| `Matrix<M, N>` | mul, transpose, scale, `mul_vec`, column extraction |
+| Gram-Schmidt | orthonormal basis from any set of vectors |
+| QR decomposition | `A = QR`, used for linear system solving |
+| Linear system solver | `Ax = b` via QR + back-substitution |
+| SVD | one-sided Jacobi, full `A = U Σ Vᵀ` |
+
+### Deep learning
+
+| | |
+|---|---|
+| `Linear<IN, OUT>` | fully connected layer, Xavier uniform init via Xorshift64 PRNG |
+| `ReLU`, `Sigmoid`, `Tanh` | element-wise activations with correct backward |
+| `Softmax` | numerically stable (max subtraction), full VJP backward |
+| `MSE`, `MAE` | regression losses |
+| `cross_entropy` | classification loss, use after Softmax |
+| `SGD` | stochastic gradient descent |
+| `seq!` macro | ergonomic composition — `seq!(L1, L2, L3)` → `Then<L1, Then<L2, L3>>` |
+
+### Initialization
+
+```rust
+Linear::<IN, OUT>::from_seed(seed)    // Xavier uniform + Xorshift64 PRNG
+Linear::<IN, OUT>::from_weights(w, b) // load pretrained weights
+Linear::<IN, OUT>::zeros()            // explicit zero init
+```
+
+On MCU, pass your hardware RNG output as seed:
+```rust
+Linear::<4, 8>::from_seed(hal::rng::read())
+```
+
+---
+
+## Performance
+
+Benchmarks on Apple M3 (release mode), single sample, batch size 1:
+
+| Network | Forward | Forward + Backward | Full step |
+|---|---|---|---|
+| `2 → 4 → 1` | 16.5 ns | 17.1 ns | 50.7 ns |
+| `2 → 8 → 4 → 1` | 63.4 ns | 83.0 ns | 116.8 ns |
+
+On STM32F4 at 168 MHz with FPU, expect roughly 20–50x slower — still well within range for real-time learning at 100 Hz sensor rates.
+
+---
+
+## Validation
+
+Iris dataset (UCI), 4 features, 3 classes, 150 samples, 80/20 split:
+
+```
+epoch    0 | train loss 0.4574
+epoch  200 | train loss 0.0272
+epoch 2000 | train loss 0.0443
+
+train accuracy : 118/120 (98.3%)
+test  accuracy :   30/30 (100.0%)
+```
+
+Network: `Linear<4,16> → Tanh → Linear<16,3> → Softmax`, SGD lr=0.05, 2000 epochs.
+
+---
+
+## Compile for STM32
 
 ```toml
+# Cargo.toml
 [dependencies]
-ferrite = { version = "0.1", default-features = false }
+ferrite = { path = ".", default-features = false }
 ```
 
----
+```bash
+cargo build --target thumbv7em-none-eabihf --no-default-features
+```
 
-## Why Ferrite
-
-Every existing ML framework assumes a heap, an OS, and megabytes of RAM. On a microcontroller, none of that exists.
-
-Ferrite is built around a different contract: **all memory is allocated at compile time, all dimensions are type-checked at compile time, and no standard library is required**. A matrix multiplication that would silently panic at runtime in other libraries simply won't compile in Ferrite if the dimensions don't match.
-
-The goal is a complete ML stack — from linear algebra primitives to autodiff and on-device training — that runs on a bare-metal STM32F4 with 192KB of RAM and no operating system.
+No allocator needed. The library produces no heap calls — verified by design.
 
 ---
 
-## Design Principles
+## Gradient checking
 
-- **`no_std` first** — runs on any Cortex-M target without an OS or allocator
-- **Const generics throughout** — matrix and vector dimensions are part of the type, checked at compile time
-- **Zero heap** — every buffer lives on the stack; no `Vec`, no `Box`, no allocator
-- **f32 hardware acceleration** — designed for Cortex-M4/M7 FPU (single precision)
-- **Portable** — the same code runs on STM32F4, STM32H7, nRF, RP2040, and desktop
+All analytical gradients are verified against numerical differentiation using centered finite differences.
 
----
+**Protocol**
 
-## Current Capabilities
+For each parameter θᵢ, the numerical gradient is estimated as:
 
-### Linear Algebra Primitives
+```
+∂L/∂θᵢ ≈ (L(θᵢ + ε) − L(θᵢ − ε)) / 2ε
+```
+
+The relative error per parameter uses the max as denominator to avoid inflating small-gradient errors:
+
+```
+eᵢ = |∂L/∂θᵢ (analytical) − ∂L/∂θᵢ (numerical)| / max(|analytical|, |numerical|, 1e-8)
+```
+
+**Results**
+
+| Mode | ε | mean error | max error |
+|---|---|---|---|
+| `f32` (default) | 1e-4 | ~6e-4 | ~2e-3 |
+| `f64` (`--features f64`) | 1e-4 | <1e-6 | <1e-5 |
+
+In `f64`, errors are well below the theoretical floor for centered differences (~ε²), confirming the analytical gradients are correct. The `f32` errors are consistent with floating-point precision limits and have no practical impact on training.
+
+**Running the check**
+
+```bash
+# f32 (default)
+cargo test grad_check -- --nocapture
+
+# f64 — higher precision validation
+cargo test grad_check --features f64 -- --nocapture
+```
+
+The checker is implemented in `src/autodiff/gradients_checking.rs`. It requires `N` (total parameter count) as a const generic — `IN*OUT + OUT` per `Linear` layer, 0 for activations:
 
 ```rust
-use ferrite::{Vector, Matrix};
-
-// Compile-time dimension safety
-let v: Vector<3> = Vector::new([1.0, 2.0, 3.0]);
-let a: Matrix<3, 3> = Matrix::new();
-
-// Ergonomic owned arithmetic (no & required)
-let result = v * 2.0;
-let product = a * b; // dimension mismatch = compile error
+// Linear<2,4> → Tanh<4> → Linear<4,1> : 12 + 0 + 5 = 17
+let result = GradChecker::check::<17, _, _>(net, input, target, mse, 1e-4);
+assert!(result.max_relative_error < 1e-2);
 ```
-
-**Vector\<N\>**
-- L1, L2, infinity norms
-- Dot product, orthogonal projection
-- Add, Sub, Mul (owned, zero-copy for Copy types)
-
-**Matrix\<ROWS, COLS\>**
-- Row-major stack allocation
-- Transpose, scale
-- `mat[(i, j)]` indexing via `Index` / `IndexMut`
-- Matrix multiplication with compile-time dimension checking
-
-### Algorithms
-
-| Algorithm | Function | Status |
-|---|---|---|
-| Gram-Schmidt orthogonalization | `gram_schmidt` | ✅ |
-| QR decomposition | `qr_decomposition` | ✅ |
-| Back-substitution | `solve_upper_triangular` | ✅ |
-| Linear system solver (Ax = b) | `solve_linear_system` | ✅ |
-| Jacobi SVD (2×2, closed-form) | `svd_2x2` | ✅ |
-| Jacobi one-sided SVD (N×N) | `svd` | ✅ |
-
-### SVD Example
-
-```rust
-use ferrite::algorithms::svd;
-
-let (u, sigma, v) = svd(&a);
-// sigma is sorted: sigma[0] >= sigma[1] >= ... >= sigma[N-1]
-// U and V are orthogonal: U^T * U = I, V^T * V = I
-// Reconstruction: U * diag(sigma) * V^T = A
-```
-
----
-
-## Target Hardware
-
-| Board | MCU | RAM | FPU | Status |
-|---|---|---|---|---|
-| Nucleo-F446RE / F447 | Cortex-M4 @ 180MHz | 192KB | Single | Reference target |
-| Nucleo-H743ZI | Cortex-M7 @ 480MHz | 1MB | Double | Planned |
-| Any Cortex-M4/M7 | — | ≥ 64KB | Single/Double | Supported |
 
 ---
 
 ## Roadmap
 
-### v0.2 — Autodiff Engine
-- Computational graph with static memory layout
-- Forward and backward pass for scalar and tensor operations
-- No dynamic dispatch, no heap
-
-### v0.3 — Neural Network Primitives
-- `Linear<IN, OUT>` layer
-- Activation functions: ReLU, sigmoid, tanh
-- Loss functions: MSE, cross-entropy
-
-### v0.4 — On-Device Training
-- SGD and Adam optimizers
-- Full MLP training loop on STM32F4
-- Gradient checkpointing for memory-constrained targets
-
-### v0.5 — Applications
-- PCA and dimensionality reduction
-- Kalman filter
-- Learned inverse kinematics for robotic arms
+- [ ] STM32 Nucleo deployment — live training on sensor data via ADC
+- [ ] Benchmarks on real hardware (Cortex-M4 with FPU)
+- [ ] `Conv2D` layer with static feature map dimensions
+- [ ] `MaxPool2D`, `Flatten`
+- [ ] Weight serialization to flash memory
+- [ ] Adam optimizer
 
 ---
 
-## Benchmarks (STM32F447, release build)
+## Structure
 
-| Operation | Time |
-|---|---|
-| Matrix multiply 4×4 | 3.5 ns |
-| SVD 3×3 | 241 ns |
-| SVD 4×4 | 539 ns |
+```
+src/
+├── lib.rs
+├── scalar.rs          — Scalar type alias (f32 default, f64 via --features f64)
+├── vector.rs          — Vector<N>
+├── matrix.rs          — Matrix<M, N>
+├── algorithms.rs      — Gram-Schmidt, QR, SVD
+└── autodiff/
+    ├── module.rs              — Module<Input> trait
+    ├── sequential.rs          — Then<A,B>, seq! macro
+    ├── update.rs              — Update trait
+    ├── perturb.rs             — Perturb trait (parameter indexing for grad check)
+    ├── flat_grads.rs          — FlatGrads trait (gradient serialization)
+    ├── gradients_checking.rs  — GradChecker
+    ├── linear.rs              — Linear<IN, OUT>
+    ├── activations.rs         — ReLU, LeakyReLU, Sigmoid, Tanh, Softmax
+    ├── loss.rs                — mse, mae, cross_entropy
+    └── optims/
+        └── sgd.rs             — sgd()
 
-*Measured on host (aarch64, Apple Silicon). STM32 figures coming in v0.2.*
-
----
-
-## License
-
-MIT OR Apache-2.0
+tests/
+└── autodiff.rs        — integration tests (real API usage)
+```
