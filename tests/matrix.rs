@@ -38,10 +38,13 @@ fn test_matrix_addition() {
 #[test]
 fn test_matrix_multiplication() {
     let mut m1 = Matrix::<2, 2>::new();
-    m1[(0, 0)] = 1.0; m1[(0, 1)] = 2.0;
-    m1[(1, 0)] = 3.0; m1[(1, 1)] = 4.0;
+    m1[(0, 0)] = 1.0;
+    m1[(0, 1)] = 2.0;
+    m1[(1, 0)] = 3.0;
+    m1[(1, 1)] = 4.0;
     let mut m2 = Matrix::<2, 1>::new();
-    m2[(0, 0)] = 5.0; m2[(1, 0)] = 6.0;
+    m2[(0, 0)] = 5.0;
+    m2[(1, 0)] = 6.0;
     let res = m1 * m2;
     assert_eq!(res[(0, 0)], 17.0);
     assert_eq!(res[(1, 0)], 39.0);
@@ -60,7 +63,8 @@ fn test_matmul_accumulate() {
 #[test]
 fn test_matrix_transpose() {
     let mut m = Matrix::<1, 2>::new();
-    m[(0, 0)] = 1.0; m[(0, 1)] = 2.0;
+    m[(0, 0)] = 1.0;
+    m[(0, 1)] = 2.0;
     let t = m.transpose();
     assert_eq!(t.rows(), 2);
     assert_eq!(t.cols(), 1);
@@ -70,7 +74,8 @@ fn test_matrix_transpose() {
 #[test]
 fn test_matrix_col_extraction() {
     let mut m = Matrix::<2, 2>::new();
-    m[(0, 1)] = 5.0; m[(1, 1)] = 10.0;
+    m[(0, 1)] = 5.0;
+    m[(1, 1)] = 10.0;
     let col = m.get_col(1).unwrap();
     assert_eq!(col, Vector::new([5.0, 10.0]));
 }

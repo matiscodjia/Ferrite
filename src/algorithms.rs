@@ -164,8 +164,16 @@ pub fn svd_2x2(mat: &Matrix<2, 2>) -> (Matrix<2, 2>, Vector<2>, Matrix<2, 2>) {
 
     let sigma_1 = a_prime.l2_norm();
     let sigma_2 = b_prime.l2_norm();
-    let u1 = if sigma_1 > EPSILON { a_prime * (1.0 / sigma_1) } else { a_prime };
-    let u2 = if sigma_2 > EPSILON { b_prime * (1.0 / sigma_2) } else { b_prime };
+    let u1 = if sigma_1 > EPSILON {
+        a_prime * (1.0 / sigma_1)
+    } else {
+        a_prime
+    };
+    let u2 = if sigma_2 > EPSILON {
+        b_prime * (1.0 / sigma_2)
+    } else {
+        b_prime
+    };
 
     let u = Matrix::from_cols([u1, u2]);
     let mut v = Matrix::<2, 2>::new();
@@ -240,4 +248,3 @@ pub fn svd<const M: usize, const N: usize>(
     sort_svd(&mut sigma, &mut u, &mut v);
     (u, sigma, v)
 }
-

@@ -197,4 +197,3 @@ impl<const ROWS: usize, const COLS: usize> IndexMut<(usize, usize)> for Matrix<R
         &mut self.data[row][col]
     }
 }
-

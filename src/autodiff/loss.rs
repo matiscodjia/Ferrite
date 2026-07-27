@@ -28,7 +28,11 @@ pub fn cross_entropy<const N: usize>(probs: Vector<N>, target: Vector<N>) -> (Sc
     let mut loss = 0.0;
     let mut grad_data = [0.0; N];
     for i in 0..N {
-        let p = if probs[i] < epsilon { epsilon } else { probs[i] };
+        let p = if probs[i] < epsilon {
+            epsilon
+        } else {
+            probs[i]
+        };
         loss -= target[i] * log(p);
         grad_data[i] = -target[i] / p;
     }
