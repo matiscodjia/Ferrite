@@ -20,9 +20,7 @@ impl<'a> TensorView<'a> {
     pub fn get(self: &Self, i: usize, j: usize) -> Scalar {
         assert!(i < self.shape.0 && j < self.shape.1);
         let flat_index: usize = i * self.row_stride + j * self.col_stride;
-
         let index: usize = flat_index + self.reference_index;
-        assert!(index < self.data.len());
         self.data[index]
     }
 }
@@ -40,13 +38,13 @@ impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> Tensor<ROWS, COLS
         }
     }
     pub fn get(self: &Self, i: usize, j: usize) -> Scalar {
+        assert!(i < self.shape.0 && j < self.shape.1);
         let flat_index: usize = i * self.row_stride + j * self.col_stride;
-        assert!(flat_index < NUMEL);
         self.data[flat_index]
     }
     pub fn set(self: &mut Self, i: usize, j: usize, value: Scalar) -> () {
+        assert!(i < self.shape.0 && j < self.shape.1);
         let flat_index: usize = i * self.row_stride + j * self.col_stride;
-        assert!(flat_index < NUMEL);
         self.data[flat_index] = value;
     }
     pub fn load_data(self: &mut Self, data: [Scalar; NUMEL]) -> () {
@@ -75,5 +73,194 @@ impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> Tensor<ROWS, COLS
             col_stride: self.col_stride,
             shape: view_shape,
         }
+    }
+}
+
+pub struct Tensor3D<const CHANNELS: usize, const ROWS: usize, const COLS: usize, const NUMEL: usize>
+{
+    data: [Scalar; NUMEL],
+    channel_stride: usize,
+    row_stride: usize,
+    col_stride: usize,
+    shape: [usize; 3],
+}
+
+impl<const CHANNELS: usize, const ROWS: usize, const COLS: usize, const NUMEL: usize>
+    Tensor3D<CHANNELS, ROWS, COLS, NUMEL>
+{
+    const STRUCTURE_CORRECTNESS: () = assert!(NUMEL == CHANNELS * ROWS * COLS);
+
+    pub fn new() -> Self {
+        let _ = Self::STRUCTURE_CORRECTNESS;
+        Self {
+            data: [0.0; NUMEL],
+            channel_stride: ROWS * COLS,
+            row_stride: COLS,
+            col_stride: 1,
+            shape: [CHANNELS, ROWS, COLS],
+        }
+    }
+    pub fn get(self: &Self, c: usize, i: usize, j: usize) -> Scalar {
+        assert!(c < self.shape[0] && i < self.shape[1] && j < self.shape[2]);
+        let flat_index: usize = c * self.channel_stride + i * self.row_stride + j * self.col_stride;
+        self.data[flat_index]
+    }
+    pub fn set(self: &mut Self, c: usize, i: usize, j: usize, value: Scalar) -> () {
+        assert!(c < self.shape[0] && i < self.shape[1] && j < self.shape[2]);
+        let flat_index: usize = c * self.channel_stride + i * self.row_stride + j * self.col_stride;
+        self.data[flat_index] = value;
+    }
+    pub fn load_data(self: &mut Self, data: [Scalar; NUMEL]) -> () {
+        self.data = data
+    }
+}
+
+pub struct Tensor4D<
+    const BATCHES: usize,
+    const CHANNELS: usize,
+    const ROWS: usize,
+    const COLS: usize,
+    const NUMEL: usize,
+> {
+    data: [Scalar; NUMEL],
+    batch_stride: usize,
+    channel_stride: usize,
+    row_stride: usize,
+    col_stride: usize,
+    shape: [usize; 4],
+}
+
+impl<
+        const BATCHES: usize,
+        const CHANNELS: usize,
+        const ROWS: usize,
+        const COLS: usize,
+        const NUMEL: usize,
+    > Tensor4D<BATCHES, CHANNELS, ROWS, COLS, NUMEL>
+{
+    const STRUCTURE_CORRECTNESS: () = assert!(NUMEL == BATCHES * CHANNELS * ROWS * COLS);
+
+    pub fn new() -> Self {
+        let _ = Self::STRUCTURE_CORRECTNESS;
+        Self {
+            data: [0.0; NUMEL],
+            batch_stride: CHANNELS * ROWS * COLS,
+            channel_stride: ROWS * COLS,
+            row_stride: COLS,
+            col_stride: 1,
+            shape: [BATCHES, CHANNELS, ROWS, COLS],
+        }
+    }
+    pub fn get(self: &Self, b: usize, c: usize, i: usize, j: usize) -> Scalar {
+        assert!(b < self.shape[0] && c < self.shape[1] && i < self.shape[2] && j < self.shape[3]);
+        let flat_index: usize = b * self.batch_stride
+            + c * self.channel_stride
+            + i * self.row_stride
+            + j * self.col_stride;
+        self.data[flat_index]
+    }
+    pub fn set(self: &mut Self, b: usize, c: usize, i: usize, j: usize, value: Scalar) -> () {
+        assert!(b < self.shape[0] && c < self.shape[1] && i < self.shape[2] && j < self.shape[3]);
+        let flat_index: usize = b * self.batch_stride
+            + c * self.channel_stride
+            + i * self.row_stride
+            + j * self.col_stride;
+        self.data[flat_index] = value;
+    }
+    pub fn load_data(self: &mut Self, data: [Scalar; NUMEL]) -> () {
+        self.data = data
+    }
+}
+
+pub struct Tensor6D<
+    const BATCHES: usize,
+    const GROUPS: usize,
+    const CHANNELS: usize,
+    const DEPTH: usize,
+    const ROWS: usize,
+    const COLS: usize,
+    const NUMEL: usize,
+> {
+    data: [Scalar; NUMEL],
+    batch_stride: usize,
+    group_stride: usize,
+    channel_stride: usize,
+    depth_stride: usize,
+    row_stride: usize,
+    col_stride: usize,
+    shape: [usize; 6],
+}
+
+impl<
+        const BATCHES: usize,
+        const GROUPS: usize,
+        const CHANNELS: usize,
+        const DEPTH: usize,
+        const ROWS: usize,
+        const COLS: usize,
+        const NUMEL: usize,
+    > Tensor6D<BATCHES, GROUPS, CHANNELS, DEPTH, ROWS, COLS, NUMEL>
+{
+    const STRUCTURE_CORRECTNESS: () =
+        assert!(NUMEL == BATCHES * GROUPS * CHANNELS * DEPTH * ROWS * COLS);
+
+    pub fn new() -> Self {
+        let _ = Self::STRUCTURE_CORRECTNESS;
+        Self {
+            data: [0.0; NUMEL],
+            batch_stride: GROUPS * CHANNELS * DEPTH * ROWS * COLS,
+            group_stride: CHANNELS * DEPTH * ROWS * COLS,
+            channel_stride: DEPTH * ROWS * COLS,
+            depth_stride: ROWS * COLS,
+            row_stride: COLS,
+            col_stride: 1,
+            shape: [BATCHES, GROUPS, CHANNELS, DEPTH, ROWS, COLS],
+        }
+    }
+    pub fn get(self: &Self, b: usize, g: usize, c: usize, d: usize, i: usize, j: usize) -> Scalar {
+        assert!(
+            b < self.shape[0]
+                && g < self.shape[1]
+                && c < self.shape[2]
+                && d < self.shape[3]
+                && i < self.shape[4]
+                && j < self.shape[5]
+        );
+        let flat_index: usize = b * self.batch_stride
+            + g * self.group_stride
+            + c * self.channel_stride
+            + d * self.depth_stride
+            + i * self.row_stride
+            + j * self.col_stride;
+        self.data[flat_index]
+    }
+    pub fn set(
+        self: &mut Self,
+        b: usize,
+        g: usize,
+        c: usize,
+        d: usize,
+        i: usize,
+        j: usize,
+        value: Scalar,
+    ) -> () {
+        assert!(
+            b < self.shape[0]
+                && g < self.shape[1]
+                && c < self.shape[2]
+                && d < self.shape[3]
+                && i < self.shape[4]
+                && j < self.shape[5]
+        );
+        let flat_index: usize = b * self.batch_stride
+            + g * self.group_stride
+            + c * self.channel_stride
+            + d * self.depth_stride
+            + i * self.row_stride
+            + j * self.col_stride;
+        self.data[flat_index] = value;
+    }
+    pub fn load_data(self: &mut Self, data: [Scalar; NUMEL]) -> () {
+        self.data = data
     }
 }
