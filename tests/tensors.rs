@@ -36,3 +36,25 @@ fn test_transpose() {
     m.transpose();
     assert_eq!(4.0, m.get(1, 2));
 }
+
+#[test]
+fn test_tensor_view() {
+    let mut m = Tensor::<3, 3, 9>::new();
+    let data = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
+    m.load_data(data);
+    let m_view = m.view((1, 2), (1, 2));
+    assert_eq!(5.0, m_view.get(0, 0));
+    assert_eq!(6.0, m_view.get(0, 1));
+    assert_eq!(8.0, m_view.get(1, 0));
+    assert_eq!(9.0, m_view.get(1, 1));
+}
+
+#[test]
+#[should_panic]
+fn test_view_indexing_not_valid() {
+    let mut m = Tensor::<3, 3, 9>::new();
+    let data = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
+    m.load_data(data);
+    let m_view = m.view((1, 2), (1, 2));
+    m_view.get(5, 5);
+}
