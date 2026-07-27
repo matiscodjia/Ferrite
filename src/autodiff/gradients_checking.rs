@@ -26,7 +26,11 @@ impl GradChecker {
         <Net as Module<Input>>::Output: Copy,
         Input: Copy,
     {
-        debug_assert_eq!(net.num_params(), N, "N doit correspondre à net.num_params()");
+        debug_assert_eq!(
+            net.num_params(),
+            N,
+            "N doit correspondre à net.num_params()"
+        );
 
         // Gradients analytiques
         let (output, ctx) = net.forward(input);
@@ -68,8 +72,12 @@ impl GradChecker {
         for i in 0..N {
             let e = errors[i];
             sum += e;
-            if e > max { max = e; }
-            if e < min { min = e; }
+            if e > max {
+                max = e;
+            }
+            if e < min {
+                min = e;
+            }
         }
         let mean = sum / N as Scalar;
 

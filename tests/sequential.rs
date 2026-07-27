@@ -5,8 +5,8 @@ use ferrite::autodiff::loss::mse;
 use ferrite::autodiff::module::Module;
 use ferrite::autodiff::optims::sgd::Sgd;
 use ferrite::autodiff::optims::train::train_step;
-use ferrite::{Scalar, Vector};
 use ferrite::seq;
+use ferrite::{Scalar, Vector};
 
 #[test]
 fn seq_2_layers_forward_backward() {
@@ -53,7 +53,10 @@ fn seq_training_step_decreases_loss() {
 
     let (output2, _) = net.forward(input);
     let (loss2, _) = mse(output2, target);
-    assert!(loss2 < loss, "loss should decrease after one SGD step: {loss2} >= {loss}");
+    assert!(
+        loss2 < loss,
+        "loss should decrease after one SGD step: {loss2} >= {loss}"
+    );
 }
 
 #[test]
@@ -70,10 +73,13 @@ fn seq_training_step_decreases_loss_leaky_relu() {
         ([1.0, 1.0], [0.0]),
     ];
 
-    let loss_before: Scalar = dataset.iter().map(|(x, y)| {
-        let (out, _) = net.forward(Vector::new(*x));
-        mse(out, Vector::new(*y)).0
-    }).sum();
+    let loss_before: Scalar = dataset
+        .iter()
+        .map(|(x, y)| {
+            let (out, _) = net.forward(Vector::new(*x));
+            mse(out, Vector::new(*y)).0
+        })
+        .sum();
 
     let mut opt = Sgd::new(0.01);
     for _ in 0..50 {
@@ -82,10 +88,13 @@ fn seq_training_step_decreases_loss_leaky_relu() {
         }
     }
 
-    let loss_after: Scalar = dataset.iter().map(|(x, y)| {
-        let (out, _) = net.forward(Vector::new(*x));
-        mse(out, Vector::new(*y)).0
-    }).sum();
+    let loss_after: Scalar = dataset
+        .iter()
+        .map(|(x, y)| {
+            let (out, _) = net.forward(Vector::new(*x));
+            mse(out, Vector::new(*y)).0
+        })
+        .sum();
 
     assert!(
         loss_after < loss_before * 0.5,
