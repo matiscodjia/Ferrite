@@ -1,11 +1,11 @@
+use ferrite::linalg::tensor::tensordot_1;
+use ferrite::linalg::tensor::tensordot_2;
+use ferrite::linalg::tensor::tensordot_3;
+use ferrite::linalg::tensor::Tensor;
+use ferrite::linalg::tensor::Tensor3D;
+use ferrite::linalg::tensor::Tensor4D;
+use ferrite::linalg::tensor::Tensor6D;
 use ferrite::scalar::Scalar;
-use ferrite::tensor::tensordot_1;
-use ferrite::tensor::tensordot_2;
-use ferrite::tensor::tensordot_3;
-use ferrite::tensor::Tensor;
-use ferrite::tensor::Tensor3D;
-use ferrite::tensor::Tensor4D;
-use ferrite::tensor::Tensor6D;
 #[test]
 //This is a compilation level test, test NOK = No compilation
 fn test_tensor_creation_and_shape() {
@@ -568,7 +568,7 @@ fn test_im2col_view_axis_overflow() {
 
 #[test]
 fn test_im2col_view_feeds_tensordot_3() {
-    // conv2d de bout en bout : im2col puis contraction sur (C, KH, KW)
+    // cross-correlation 2D de bout en bout : im2col puis contraction sur (C, KH, KW)
     // 1 2 3
     // 4 5 6
     // 7 8 9

@@ -1,4 +1,4 @@
-use ferrite::algorithms::{
+use ferrite::linalg::decomposition::{
     gram_schmidt, jacobi_rotation, qr_decomposition, solve_linear_system, solve_upper_triangular,
     svd, svd_2x2,
 };

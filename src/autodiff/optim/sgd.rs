@@ -1,5 +1,5 @@
-use crate::autodiff::optims::optimizer::Optimizer;
-use crate::autodiff::update::Update;
+use crate::autodiff::core::update::Update;
+use crate::autodiff::optim::optimizer::Optimizer;
 use crate::scalar::Scalar;
 
 pub struct Sgd {

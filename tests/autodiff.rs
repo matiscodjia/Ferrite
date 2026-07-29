@@ -1,11 +1,11 @@
 mod iris_data;
 
-use ferrite::autodiff::activations::{ReLU, Softmax, Tanh};
-use ferrite::autodiff::linear::Linear;
+use ferrite::autodiff::core::module::Module;
+use ferrite::autodiff::layers::activations::{ReLU, Softmax, Tanh};
+use ferrite::autodiff::layers::linear::Linear;
 use ferrite::autodiff::loss::{cross_entropy, mse};
-use ferrite::autodiff::module::Module;
-use ferrite::autodiff::optims::sgd::Sgd;
-use ferrite::autodiff::optims::train::train_step;
+use ferrite::autodiff::optim::sgd::Sgd;
+use ferrite::autodiff::optim::train::train_step;
 use ferrite::seq;
 use ferrite::{Matrix, Scalar, Vector};
 

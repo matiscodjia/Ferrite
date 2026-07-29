@@ -1,4 +1,4 @@
-use crate::autodiff::sequential::Then;
+use crate::autodiff::core::sequential::Then;
 use crate::scalar::Scalar;
 
 pub trait Perturb {

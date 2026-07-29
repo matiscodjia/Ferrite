@@ -1,5 +1,5 @@
+use crate::linalg::vector::Vector;
 use crate::scalar::{log, Scalar};
-use crate::vector::Vector;
 
 pub fn mse<const N: usize>(output: Vector<N>, target: Vector<N>) -> (Scalar, Vector<N>) {
     let mut loss = 0.0;

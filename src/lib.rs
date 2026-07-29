@@ -4,16 +4,13 @@
 #[macro_use]
 extern crate std; // Use full std for tests and dev on MacOS.
 
-pub mod algorithms;
 pub mod autodiff;
-pub mod matrix;
+pub mod linalg;
 pub mod scalar;
 pub mod sp;
-pub mod tensor;
-pub mod vector;
-pub use algorithms::{gram_schmidt, qr_decomposition, solve_linear_system};
-pub use matrix::Matrix;
-pub use scalar::Scalar;
-pub use sp::conv2d;
+
 /// Re-export main types for simplified usage
-pub use vector::Vector;
+pub use linalg::{gram_schmidt, qr_decomposition, solve_linear_system};
+pub use linalg::{Matrix, Tensor, Vector};
+pub use scalar::Scalar;
+pub use sp::cross_correlate2d;

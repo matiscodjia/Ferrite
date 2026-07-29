@@ -1,6 +1,6 @@
-use crate::matrix::Matrix;
+use crate::linalg::matrix::Matrix;
+use crate::linalg::vector::Vector;
 use crate::scalar::{fabs, sqrt, Scalar};
-use crate::vector::Vector;
 
 const EPSILON: Scalar = Scalar::EPSILON;
 
