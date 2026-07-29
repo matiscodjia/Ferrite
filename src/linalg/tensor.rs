@@ -1,4 +1,4 @@
-use crate::scalar::{fabs, Scalar};
+use crate::scalar::Scalar;
 
 #[derive(Clone, Copy, Debug)]
 #[allow(unused_variables)]
@@ -201,7 +201,7 @@ impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> Tensor<ROWS, COLS
     const STRUCTURE_CORRECTNESS: () = assert!(NUMEL == ROWS * COLS);
 
     pub fn new() -> Self {
-        Self::STRUCTURE_CORRECTNESS;
+        let _ = Self::STRUCTURE_CORRECTNESS;
         Self {
             data: [0.0; NUMEL],
             row_stride: COLS,

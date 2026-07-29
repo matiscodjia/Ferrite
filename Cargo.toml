@@ -10,6 +10,7 @@ categories = ["no-std", "embedded", "science"]
 
 [dependencies]
 libm = { version = "0.2.16", default-features = false }
+regex = "1.13.1"
 
 [features]
 # Default : std activé pour le développement et les tests sur Mac.

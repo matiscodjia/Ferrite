@@ -5,10 +5,10 @@
 extern crate std; // Use full std for tests and dev on MacOS.
 
 pub mod autodiff;
+pub mod io;
 pub mod linalg;
 pub mod scalar;
 pub mod sp;
-
 /// Re-export main types for simplified usage
 pub use linalg::{gram_schmidt, qr_decomposition, solve_linear_system};
 pub use linalg::{Matrix, Tensor, Vector};
