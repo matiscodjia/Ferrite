@@ -1,10 +1,10 @@
-use crate::autodiff::flat_grads::FlatGrads;
-use crate::autodiff::module::Module;
-use crate::autodiff::params::Params;
-use crate::autodiff::perturb::Perturb;
-use crate::autodiff::update::Update;
+use crate::autodiff::core::flat_grads::FlatGrads;
+use crate::autodiff::core::module::Module;
+use crate::autodiff::core::params::Params;
+use crate::autodiff::core::perturb::Perturb;
+use crate::autodiff::core::update::Update;
+use crate::linalg::vector::Vector;
 use crate::scalar::{exp, tanh, Scalar};
-use crate::vector::Vector;
 
 macro_rules! impl_stateless {
     ($t:ty) => {

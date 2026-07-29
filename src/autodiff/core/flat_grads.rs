@@ -1,5 +1,5 @@
-use crate::autodiff::params::Params;
-use crate::autodiff::sequential::Then;
+use crate::autodiff::core::params::Params;
+use crate::autodiff::core::sequential::Then;
 use crate::scalar::Scalar;
 
 pub trait FlatGrads: Params {

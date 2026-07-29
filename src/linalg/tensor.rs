@@ -150,7 +150,7 @@ impl<
 /// Contracts the last three axes of `a` with the last three axes of `b`:
 /// (N x H_OUT x W_OUT x C x KH x KW) . (K x C x KH x KW) -> (N x H_OUT x W_OUT x K).
 ///
-/// This is the conv2d contraction: `a` holds one receptive field (C x KH x KW)
+/// This is the cross-correlation contraction: `a` holds one receptive field (C x KH x KW)
 /// per output pixel, `b` holds the K filters. `a` is any `Rank6`, so an
 /// im2col `TensorView6D` contracts straight from the input buffer — no
 /// materialised patch tensor, hence no N * H_OUT * W_OUT * C * KH * KW copy.

@@ -1,6 +1,6 @@
-use crate::autodiff::flat_grads::FlatGrads;
-use crate::autodiff::module::Module;
-use crate::autodiff::perturb::Perturb;
+use crate::autodiff::core::flat_grads::FlatGrads;
+use crate::autodiff::core::module::Module;
+use crate::autodiff::core::perturb::Perturb;
 use crate::scalar::{fabs, sqrt, Scalar};
 
 pub struct GradChecker {

@@ -1,5 +1,5 @@
+use crate::linalg::vector::Vector;
 use crate::scalar::{fabs, Scalar};
-use crate::vector::Vector;
 use core::cmp::PartialEq;
 use core::ops::{Add, Index, IndexMut, Mul, Sub};
 

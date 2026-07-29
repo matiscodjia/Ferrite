@@ -1,5 +1,5 @@
-use crate::autodiff::module::Module;
-use crate::autodiff::params::Params;
+use crate::autodiff::core::module::Module;
+use crate::autodiff::core::params::Params;
 
 #[derive(Clone)]
 pub struct Then<A, B> {
@@ -55,6 +55,6 @@ macro_rules! seq {
         $only
     };
     ($first:expr, $($rest:expr),+) => {
-        $crate::autodiff::sequential::Then::new($first, $crate::seq!($($rest),+))
+        $crate::autodiff::core::sequential::Then::new($first, $crate::seq!($($rest),+))
     };
 }

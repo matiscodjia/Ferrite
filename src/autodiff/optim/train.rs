@@ -1,5 +1,5 @@
-use crate::autodiff::module::Module;
-use crate::autodiff::optims::optimizer::Optimizer;
+use crate::autodiff::core::module::Module;
+use crate::autodiff::optim::optimizer::Optimizer;
 use crate::scalar::Scalar;
 
 pub fn train_step<Net, Input, Opt>(
