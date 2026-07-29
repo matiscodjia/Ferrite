@@ -1,9 +1,9 @@
+use ferrite::linalg::tensor::{Tensor3D, Tensor4D};
 use ferrite::scalar::{fabs, Scalar};
-use ferrite::sp::{conv2d, filter_bank, Gaussian3D, Sobel3D};
-use ferrite::tensor::{Tensor3D, Tensor4D};
+use ferrite::sp::{cross_correlate2d, filter_bank, Gaussian3D, Sobel3D};
 
 #[test]
-fn test_conv2d_single_frame_two_filters() {
+fn test_cross_correlate2d_single_frame_two_filters() {
     // 1 2 3
     // 4 5 6
     // 7 8 9
@@ -15,7 +15,7 @@ fn test_conv2d_single_frame_two_filters() {
     filters.load_data([1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
 
     // chaque filtre devient un canal de sortie
-    let out: Tensor4D<1, 2, 2, 2, 8> = conv2d(&frames, &filters, 1);
+    let out: Tensor4D<1, 2, 2, 2, 8> = cross_correlate2d(&frames, &filters, 1);
     // diagonales : 1+5, 2+6, 4+8, 5+9
     assert_eq!(6.0, out.get(0, 0, 0, 0));
     assert_eq!(8.0, out.get(0, 0, 1, 0));
@@ -29,7 +29,7 @@ fn test_conv2d_single_frame_two_filters() {
 }
 
 #[test]
-fn test_conv2d_sequence_matches_naive_convolution() {
+fn test_cross_correlate2d_sequence_matches_naive_correlation() {
     // sequence de 2 frames, 2 canaux, 4x4, contre 3 filtres 2x2
     const N: usize = 2;
     const C: usize = 2;
@@ -55,7 +55,7 @@ fn test_conv2d_sequence_matches_naive_convolution() {
     }
     filters.load_data(filter_data);
 
-    let out: Tensor4D<N, H_OUT, W_OUT, K, 54> = conv2d(&frames, &filters, 1);
+    let out: Tensor4D<N, H_OUT, W_OUT, K, 54> = cross_correlate2d(&frames, &filters, 1);
 
     // reference : la convolution ecrite a la main, boucle par boucle
     for n in 0..N {
@@ -81,7 +81,7 @@ fn test_conv2d_sequence_matches_naive_convolution() {
 }
 
 #[test]
-fn test_conv2d_stride_2() {
+fn test_cross_correlate2d_stride_2() {
     // stride 2 sur une 4x4 : fenetres disjointes, sortie 2x2
     let mut frames = Tensor4D::<1, 1, 4, 4, 16>::new();
     frames.load_data([
@@ -91,7 +91,7 @@ fn test_conv2d_stride_2() {
     let mut filters = Tensor4D::<1, 1, 2, 2, 4>::new();
     filters.load_data([1.0, 1.0, 1.0, 1.0]);
 
-    let out: Tensor4D<1, 2, 2, 1, 4> = conv2d(&frames, &filters, 2);
+    let out: Tensor4D<1, 2, 2, 1, 4> = cross_correlate2d(&frames, &filters, 2);
     assert_eq!(14.0, out.get(0, 0, 0, 0)); // 1+2+5+6
     assert_eq!(22.0, out.get(0, 0, 1, 0)); // 3+4+7+8
     assert_eq!(46.0, out.get(0, 1, 0, 0)); // 9+10+13+14
@@ -99,7 +99,7 @@ fn test_conv2d_stride_2() {
 }
 
 #[test]
-fn test_conv2d_gaussian_and_sobel_bank() {
+fn test_cross_correlate2d_gaussian_and_sobel_bank() {
     // 2 frames monocanal 4x4, remplies d'une rampe : f(i, j) = 1 + 4i + j pour
     // la premiere frame, +16 pour la seconde
     let mut frames = Tensor4D::<2, 1, 4, 4, 32>::new();
@@ -114,7 +114,7 @@ fn test_conv2d_gaussian_and_sobel_bank() {
     let sobel_x: Tensor3D<1, 3, 3, 9> = Sobel3D::x();
     let bank: Tensor4D<2, 1, 3, 3, 18> = filter_bank([&gaussian, &sobel_x]);
 
-    let out: Tensor4D<2, 2, 2, 2, 16> = conv2d(&frames, &bank, 1);
+    let out: Tensor4D<2, 2, 2, 2, 16> = cross_correlate2d(&frames, &bank, 1);
 
     // gaussienne a gain unite : sur une rampe (lineaire), elle rend le pixel
     // central de la fenetre, donc f(i + 1, j + 1)
@@ -137,7 +137,7 @@ fn test_conv2d_gaussian_and_sobel_bank() {
 }
 
 #[test]
-fn test_conv2d_bank_over_two_channels() {
+fn test_cross_correlate2d_bank_over_two_channels() {
     // la profondeur des kernels sert ici : canal 0 = rampe, canal 1 = zeros.
     // La contraction somme les canaux, et les kernels normalisent par C, donc
     // la reponse est la moyenne des reponses par canal.
@@ -152,7 +152,7 @@ fn test_conv2d_bank_over_two_channels() {
     let sobel_y: Tensor3D<2, 3, 3, 18> = Sobel3D::y();
     let bank: Tensor4D<2, 2, 3, 3, 36> = filter_bank([&gaussian, &sobel_y]);
 
-    let out: Tensor4D<1, 2, 2, 2, 8> = conv2d(&frames, &bank, 1);
+    let out: Tensor4D<1, 2, 2, 2, 8> = cross_correlate2d(&frames, &bank, 1);
 
     // gaussienne : (pixel central + 0) / 2
     assert_eq!(3.0, out.get(0, 0, 0, 0));
@@ -176,7 +176,7 @@ fn test_gaussian_bank_preserves_constant_sequence() {
     let sobel_x: Tensor3D<3, 3, 3, 27> = Sobel3D::x();
     let bank: Tensor4D<2, 3, 3, 3, 54> = filter_bank([&gaussian, &sobel_x]);
 
-    let out: Tensor4D<1, 1, 1, 2, 2> = conv2d(&frames, &bank, 1);
+    let out: Tensor4D<1, 1, 1, 2, 2> = cross_correlate2d(&frames, &bank, 1);
     // 1/(16 * 3) n'est pas exact en binaire : on compare a l'epsilon pres
     assert!(fabs(7.0 - out.get(0, 0, 0, 0)) < 1e-5);
     // et un gradient nul sur une image plate

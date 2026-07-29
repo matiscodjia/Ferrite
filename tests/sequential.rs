@@ -1,10 +1,10 @@
-use ferrite::autodiff::activations::{LeakyReLU, ReLU, Tanh};
-use ferrite::autodiff::gradients_checking::GradChecker;
-use ferrite::autodiff::linear::Linear;
+use ferrite::autodiff::core::module::Module;
+use ferrite::autodiff::grad_check::GradChecker;
+use ferrite::autodiff::layers::activations::{LeakyReLU, ReLU, Tanh};
+use ferrite::autodiff::layers::linear::Linear;
 use ferrite::autodiff::loss::mse;
-use ferrite::autodiff::module::Module;
-use ferrite::autodiff::optims::sgd::Sgd;
-use ferrite::autodiff::optims::train::train_step;
+use ferrite::autodiff::optim::sgd::Sgd;
+use ferrite::autodiff::optim::train::train_step;
 use ferrite::seq;
 use ferrite::{Scalar, Vector};
 
