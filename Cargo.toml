@@ -10,12 +10,26 @@ categories = ["no-std", "embedded", "science"]
 
 [dependencies]
 libm = { version = "0.2.16", default-features = false }
-regex = "1.13.1"
+# Sonde : parsing des en-têtes .npy, uniquement côté hôte. `regex` dépend de std,
+# donc la dépendance elle-même doit être optionnelle pour que la cible bare-metal
+# ne tente jamais de la compiler.
+regex = { version = "1.13.1", optional = true }
 
 [features]
 # Default : std activé pour le développement et les tests sur Mac.
 # Pour compiler pour STM32 : cargo build --target thumbv7em-none-eabihf --no-default-features
 default = ["std"]
-std = []
+# Le cœur (linalg, sp, scalar) ne dépend d'aucune de ces features : il compile nu.
+# `alloc` et `std` n'activent que l'instrumentation de test et de benchmark.
+alloc = []
+std = ["alloc", "dep:regex"]
 # Active f64 partout dans le moteur (debug/gradient checking) — pas pour l'embarqué.
 f64 = []
+
+# Sonde de benchmark : lit des .npy et mesure la cross-corrélation. N'a de sens
+# que sur hôte, d'où `required-features` — sans quoi `--no-default-features`
+# essaie de le compiler pour Cortex-M.
+[[bin]]
+name = "ferrite"
+path = "src/main.rs"
+required-features = ["std"]

@@ -651,3 +651,73 @@ fn test_tensordot_3_view_matches_materialised() {
     // et le resultat n'est pas trivialement nul partout
     assert_ne!(0.0, from_view.get(0, 0, 0, 0));
 }
+
+/// Le lieu de stockage ne doit rien changer au résultat : même entrée, même
+/// contraction, une fois sur la pile et une fois sur le tas.
+#[cfg(feature = "alloc")]
+#[test]
+fn test_storage_agnostic_cross_correlation() {
+    use ferrite::linalg::Tensor4DBoxed;
+
+    const N: usize = 2;
+    const C: usize = 3;
+    const H: usize = 6;
+    const W: usize = 6;
+    const K: usize = 2;
+    const H_OUT: usize = 4;
+    const W_OUT: usize = 4;
+    const NUMEL_X: usize = N * C * H * W;
+    const NUMEL_F: usize = K * C * 3 * 3;
+    const NUMEL_Y: usize = N * H_OUT * W_OUT * K;
+
+    let mut video = [0.0 as Scalar; NUMEL_X];
+    for (i, v) in video.iter_mut().enumerate() {
+        *v = (i as Scalar) * 0.5 - 3.0;
+    }
+    let mut filters = [0.0 as Scalar; NUMEL_F];
+    for (i, v) in filters.iter_mut().enumerate() {
+        *v = ((i % 7) as Scalar) - 2.0;
+    }
+
+    let mut vid_stack = Tensor4D::<N, C, H, W, NUMEL_X>::new();
+    let mut fil_stack = Tensor4D::<K, C, 3, 3, NUMEL_F>::new();
+    vid_stack.load_data(video);
+    fil_stack.load_data(filters);
+    let on_stack: Tensor4D<N, H_OUT, W_OUT, K, NUMEL_Y> =
+        tensordot_3(&vid_stack.im2col_view::<H_OUT, W_OUT, 3, 3>(1), &fil_stack);
+
+    let mut vid_heap = Tensor4DBoxed::<N, C, H, W, NUMEL_X>::new();
+    let mut fil_heap = Tensor4DBoxed::<K, C, 3, 3, NUMEL_F>::new();
+    vid_heap.load_vec(video.to_vec()).unwrap();
+    fil_heap.load_vec(filters.to_vec()).unwrap();
+    let on_heap: Tensor4DBoxed<N, H_OUT, W_OUT, K, NUMEL_Y> =
+        tensordot_3(&vid_heap.im2col_view::<H_OUT, W_OUT, 3, 3>(1), &fil_heap);
+
+    assert_eq!(on_stack.get_shape(), on_heap.get_shape());
+    assert_eq!(on_stack.get_data(), on_heap.get_data());
+    // et le resultat n'est pas trivialement nul partout
+    assert_ne!(0.0, on_heap.get(0, 0, 0, 0));
+}
+
+/// Croiser les stockages dans une même contraction : entrée tas, filtres pile,
+/// sortie pile. Si ça compile et que ça donne la même chose, `Storage` ne fuit
+/// pas dans le noyau de calcul.
+#[cfg(feature = "alloc")]
+#[test]
+fn test_mixed_storage_operands() {
+    use ferrite::linalg::Tensor4DBoxed;
+
+    let mut vid_heap = Tensor4DBoxed::<1, 1, 4, 4, 16>::new();
+    vid_heap
+        .load_vec((0..16).map(|i| i as Scalar).collect())
+        .unwrap();
+
+    let mut fil_stack = Tensor4D::<1, 1, 2, 2, 4>::new();
+    fil_stack.load_data([1.0, 1.0, 1.0, 1.0]);
+
+    let out: Tensor4D<1, 3, 3, 1, 9> =
+        tensordot_3(&vid_heap.im2col_view::<3, 3, 2, 2>(1), &fil_stack);
+
+    assert_eq!(10.0, out.get(0, 0, 0, 0)); // 0+1+4+5
+    assert_eq!(14.0, out.get(0, 0, 1, 0)); // 1+2+5+6
+}

@@ -1,6 +1,8 @@
 //! 2D cross-correlation over a batch of multi-channel frames.
 
+use crate::linalg::storage::{OwnedStorage, Storage};
 use crate::linalg::tensor::{tensordot_3, Tensor4D};
+use crate::scalar::Scalar;
 
 /// Cross-correlates a (N x C x H x W) sequence with K filters of shape
 /// (C x KH x KW), producing a (N x H_OUT x W_OUT x K) sequence — one new channel
@@ -59,11 +61,19 @@ pub fn cross_correlate2d<
     const NUMEL_X: usize,
     const NUMEL_F: usize,
     const NUMEL_Y: usize,
+    SX,
+    SF,
+    SY,
 >(
-    sequence: &Tensor4D<N, C, H, W, NUMEL_X>,
-    filters: &Tensor4D<K, C, KH, KW, NUMEL_F>,
+    sequence: &Tensor4D<N, C, H, W, NUMEL_X, SX>,
+    filters: &Tensor4D<K, C, KH, KW, NUMEL_F, SF>,
     stride: usize,
-) -> Tensor4D<N, H_OUT, W_OUT, K, NUMEL_Y> {
+) -> Tensor4D<N, H_OUT, W_OUT, K, NUMEL_Y, SY>
+where
+    SX: Storage<[Scalar; NUMEL_X]>,
+    SF: Storage<[Scalar; NUMEL_F]>,
+    SY: OwnedStorage<[Scalar; NUMEL_Y]>,
+{
     // (N x C x H x W) seen as (N x H_OUT x W_OUT x C x KH x KW), no copy
     let patches = sequence.im2col_view::<H_OUT, W_OUT, KH, KW>(stride);
     // contract (C x KH x KW) against each of the K filters

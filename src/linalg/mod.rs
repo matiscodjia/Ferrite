@@ -5,6 +5,7 @@
 
 pub mod decomposition;
 pub mod matrix;
+pub mod storage;
 pub mod tensor;
 pub mod vector;
 
@@ -13,6 +14,11 @@ pub use decomposition::{
     svd, svd_2x2,
 };
 pub use matrix::Matrix;
+#[cfg(feature = "alloc")]
+pub use storage::HeapStorage;
+pub use storage::{OwnedStorage, StackStorage, Storage};
+#[cfg(feature = "alloc")]
+pub use tensor::Tensor4DBoxed;
 pub use tensor::{
     tensordot_1, tensordot_2, tensordot_3, Rank6, Tensor, Tensor3D, Tensor4D, Tensor6D, TensorView,
     TensorView6D,
