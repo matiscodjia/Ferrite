@@ -5,6 +5,7 @@ use std::io::Read;
 use std::string::{String, ToString};
 use std::vec::Vec;
 
+#[derive(Debug)]
 pub struct NpyArray {
     pub shape: Vec<usize>,
     pub data: Vec<f32>,
@@ -71,8 +72,6 @@ pub fn read_npy(path: &std::path::Path) -> Result<NpyArray, std::io::Error> {
         .and_then(|c| c.get(1))
         .map(|m| m.as_str());
     // 6. verifier descr == "<f4" et fortran_order == False, sinon Err
-    println!("descr: {:?}", descr);
-    println!("fortran: {:?}", fortran);
     if descr != Some("<f4") {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
