@@ -25,6 +25,11 @@ jobs:
   embedded:
     name: Embedded build (thumbv7em, no_std)
     runs-on: ubuntu-latest
+    # Vérifie le cœur seul — linalg, sp, scalar. Les sondes hôte (io, binaire de
+    # benchmark, dépendance regex) sont exclues par construction : `io` est gaté
+    # sur la feature `std`, le binaire déclare `required-features = ["std"]`, et
+    # `regex` est une dépendance optionnelle activée par cette même feature.
+    # Si ce job casse, c'est que du code hôte a fuité dans le cœur.
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -33,6 +38,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Build for Cortex-M (no heap, no std)
         run: cargo build --target thumbv7em-none-eabihf --no-default-features
+      - name: Build for Cortex-M with alloc (gros tenseurs de benchmark)
+        run: cargo build --target thumbv7em-none-eabihf --no-default-features --features alloc
+      - name: Core builds no_std on host (signal rapide)
+        run: cargo build --no-default-features --lib
 
   fmt:
     name: Format
