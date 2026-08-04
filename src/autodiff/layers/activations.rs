@@ -3,7 +3,7 @@ use crate::autodiff::core::module::Module;
 use crate::autodiff::core::params::Params;
 use crate::autodiff::core::perturb::Perturb;
 use crate::autodiff::core::update::Update;
-use crate::linalg::vector::Vector;
+use crate::linalg::tensor::Vector;
 use crate::scalar::{exp, tanh, Scalar};
 
 macro_rules! impl_stateless {
@@ -42,7 +42,7 @@ impl<const N: usize> Module<Vector<N>> for ReLU<N> {
                 result[i] = x[i];
             }
         }
-        (Vector::new(result), x)
+        (Vector::from_data(result), x)
     }
 
     fn backward(
@@ -57,7 +57,7 @@ impl<const N: usize> Module<Vector<N>> for ReLU<N> {
                 result[i] = grad_out[i];
             }
         }
-        (Vector::new(result), ())
+        (Vector::from_data(result), ())
     }
 }
 
@@ -83,7 +83,7 @@ impl<const N: usize> Module<Vector<N>> for LeakyReLU<N> {
         for i in 0..N {
             result[i] = if x[i] > 0.0 { x[i] } else { x[i] * self.alpha };
         }
-        (Vector::new(result), x)
+        (Vector::from_data(result), x)
     }
 
     fn backward(
@@ -100,7 +100,7 @@ impl<const N: usize> Module<Vector<N>> for LeakyReLU<N> {
                 grad_out[i] * self.alpha
             };
         }
-        (Vector::new(result), ())
+        (Vector::from_data(result), ())
     }
 }
 
@@ -118,7 +118,7 @@ impl<const N: usize> Module<Vector<N>> for Sigmoid<N> {
         for i in 0..N {
             result[i] = 1.0 / (1.0 + exp(-x[i]));
         }
-        let output = Vector::new(result);
+        let output = Vector::from_data(result);
         (output, output)
     }
 
@@ -132,7 +132,7 @@ impl<const N: usize> Module<Vector<N>> for Sigmoid<N> {
         for i in 0..N {
             result[i] = grad_out[i] * sigmoid[i] * (1.0 - sigmoid[i]);
         }
-        (Vector::new(result), ())
+        (Vector::from_data(result), ())
     }
 }
 
@@ -150,7 +150,7 @@ impl<const N: usize> Module<Vector<N>> for Tanh<N> {
         for i in 0..N {
             result[i] = tanh(x[i]);
         }
-        let output = Vector::new(result);
+        let output = Vector::from_data(result);
         (output, output)
     }
 
@@ -164,7 +164,7 @@ impl<const N: usize> Module<Vector<N>> for Tanh<N> {
         for i in 0..N {
             result[i] = grad_out[i] * (1.0 - t[i] * t[i]);
         }
-        (Vector::new(result), ())
+        (Vector::from_data(result), ())
     }
 }
 
@@ -193,7 +193,7 @@ impl<const N: usize> Module<Vector<N>> for Softmax<N> {
         for i in 0..N {
             data[i] /= sum;
         }
-        let output = Vector::new(data);
+        let output = Vector::from_data(data);
         (output, output)
     }
 
@@ -208,6 +208,6 @@ impl<const N: usize> Module<Vector<N>> for Softmax<N> {
         for i in 0..N {
             result[i] = s[i] * (grad_out[i] - dot);
         }
-        (Vector::new(result), ())
+        (Vector::from_data(result), ())
     }
 }

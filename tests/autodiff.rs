@@ -6,12 +6,13 @@ use ferrite::autodiff::layers::linear::Linear;
 use ferrite::autodiff::loss::{cross_entropy, mse};
 use ferrite::autodiff::optim::sgd::Sgd;
 use ferrite::autodiff::optim::train::train_step;
+use ferrite::linalg::tensor::Vector;
 use ferrite::seq;
-use ferrite::{Matrix, Scalar, Vector};
+use ferrite::{Matrix, Scalar};
 
 #[test]
 fn test_integration_vector_matrix() {
-    let v = Vector::new([1.0, 2.0]);
+    let v = Vector::from_data([1.0, 2.0]);
     assert_eq!(v.dim(), 2);
     let m = Matrix::<2, 2>::new();
     assert_eq!(m.rows(), 2);
@@ -20,12 +21,12 @@ fn test_integration_vector_matrix() {
 #[test]
 fn test_mlp_training_step() {
     let mut network = seq!(
-        Linear::<2, 4>::from_seed(42),
+        Linear::<2, 4, 8>::from_seed(42),
         ReLU::<4> {},
-        Linear::<4, 1>::from_seed(137)
+        Linear::<4, 1, 4>::from_seed(137)
     );
-    let input = Vector::new([1.0, 0.5]);
-    let target = Vector::new([1.0]);
+    let input = Vector::from_data([1.0, 0.5]);
+    let target = Vector::from_data([1.0]);
 
     let mut opt = Sgd::new(0.01);
     let loss = train_step(&mut network, &mut opt, input, target, mse);
@@ -42,16 +43,16 @@ fn test_mlp_training_step() {
 #[test]
 fn test_convergence() {
     let dataset: [(Vector<2>, Vector<1>); 4] = [
-        (Vector::new([1.0, 1.0]), Vector::new([1.0])),
-        (Vector::new([1.0, -1.0]), Vector::new([-1.0])),
-        (Vector::new([-1.0, 1.0]), Vector::new([-1.0])),
-        (Vector::new([-1.0, -1.0]), Vector::new([1.0])),
+        (Vector::from_data([1.0, 1.0]), Vector::from_data([1.0])),
+        (Vector::from_data([1.0, -1.0]), Vector::from_data([-1.0])),
+        (Vector::from_data([-1.0, 1.0]), Vector::from_data([-1.0])),
+        (Vector::from_data([-1.0, -1.0]), Vector::from_data([1.0])),
     ];
 
     let mut network = seq!(
-        Linear::<2, 8>::from_seed(42),
+        Linear::<2, 8, 16>::from_seed(42),
         Tanh::<8> {},
-        Linear::<8, 1>::from_seed(137)
+        Linear::<8, 1, 8>::from_seed(137)
     );
 
     let mut opt = Sgd::new(0.05);
@@ -88,35 +89,35 @@ fn test_convergence() {
 fn test_classifier() {
     let dataset: [(Vector<4>, Vector<3>); 6] = [
         (
-            Vector::new([1.0, 0.0, 0.0, 0.0]),
-            Vector::new([1.0, 0.0, 0.0]),
+            Vector::from_data([1.0, 0.0, 0.0, 0.0]),
+            Vector::from_data([1.0, 0.0, 0.0]),
         ),
         (
-            Vector::new([0.9, 0.1, 0.0, 0.0]),
-            Vector::new([1.0, 0.0, 0.0]),
+            Vector::from_data([0.9, 0.1, 0.0, 0.0]),
+            Vector::from_data([1.0, 0.0, 0.0]),
         ),
         (
-            Vector::new([0.0, 1.0, 0.0, 0.0]),
-            Vector::new([0.0, 1.0, 0.0]),
+            Vector::from_data([0.0, 1.0, 0.0, 0.0]),
+            Vector::from_data([0.0, 1.0, 0.0]),
         ),
         (
-            Vector::new([0.1, 0.8, 0.1, 0.0]),
-            Vector::new([0.0, 1.0, 0.0]),
+            Vector::from_data([0.1, 0.8, 0.1, 0.0]),
+            Vector::from_data([0.0, 1.0, 0.0]),
         ),
         (
-            Vector::new([0.0, 0.0, 1.0, 1.0]),
-            Vector::new([0.0, 0.0, 1.0]),
+            Vector::from_data([0.0, 0.0, 1.0, 1.0]),
+            Vector::from_data([0.0, 0.0, 1.0]),
         ),
         (
-            Vector::new([0.0, 0.1, 0.8, 0.9]),
-            Vector::new([0.0, 0.0, 1.0]),
+            Vector::from_data([0.0, 0.1, 0.8, 0.9]),
+            Vector::from_data([0.0, 0.0, 1.0]),
         ),
     ];
 
     let mut network = seq!(
-        Linear::<4, 8>::from_seed(42),
+        Linear::<4, 8, 32>::from_seed(42),
         Tanh::<8> {},
-        Linear::<8, 3>::from_seed(137),
+        Linear::<8, 3, 24>::from_seed(137),
         Softmax::<3> {}
     );
 
@@ -163,19 +164,19 @@ fn test_iris() {
             data[i] = (raw[i] as Scalar - FEATURE_MIN[i] as Scalar)
                 / (FEATURE_MAX[i] as Scalar - FEATURE_MIN[i] as Scalar);
         }
-        Vector::new(data)
+        Vector::from_data(data)
     };
 
     let to_onehot = |class: usize| -> Vector<3> {
         let mut data = [0.0; 3];
         data[class] = 1.0;
-        Vector::new(data)
+        Vector::from_data(data)
     };
 
     let mut train: [(Vector<4>, Vector<3>); 120] =
-        [(Vector::new([0.0; 4]), Vector::new([0.0; 3])); 120];
+        [(Vector::from_data([0.0; 4]), Vector::from_data([0.0; 3])); 120];
     let mut test: [(Vector<4>, Vector<3>); 30] =
-        [(Vector::new([0.0; 4]), Vector::new([0.0; 3])); 30];
+        [(Vector::from_data([0.0; 4]), Vector::from_data([0.0; 3])); 30];
 
     for class in 0..3 {
         for i in 0..40 {
@@ -189,9 +190,9 @@ fn test_iris() {
     }
 
     let mut network = seq!(
-        Linear::<4, 16>::from_seed(42),
+        Linear::<4, 16, 64>::from_seed(42),
         Tanh::<16> {},
-        Linear::<16, 3>::from_seed(137),
+        Linear::<16, 3, 48>::from_seed(137),
         Softmax::<3> {}
     );
 
@@ -247,20 +248,20 @@ fn test_iris() {
 // cargo test bench_autodiff -- --nocapture
 #[test]
 fn bench_autodiff() {
-    let input = Vector::new([1.0, 0.5]);
-    let target = Vector::new([1.0]);
+    let input = Vector::from_data([1.0, 0.5]);
+    let target = Vector::from_data([1.0]);
 
     let mut net_s = seq!(
-        Linear::<2, 4>::from_seed(42),
+        Linear::<2, 4, 8>::from_seed(42),
         Tanh::<4> {},
-        Linear::<4, 1>::from_seed(99)
+        Linear::<4, 1, 4>::from_seed(99)
     );
     let mut net_m = seq!(
-        Linear::<2, 8>::from_seed(42),
+        Linear::<2, 8, 16>::from_seed(42),
         Tanh::<8> {},
-        Linear::<8, 4>::from_seed(99),
+        Linear::<8, 4, 32>::from_seed(99),
         Tanh::<4> {},
-        Linear::<4, 1>::from_seed(7)
+        Linear::<4, 1, 4>::from_seed(7)
     );
 
     let n = 10_000u32;
