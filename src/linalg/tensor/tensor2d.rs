@@ -47,6 +47,32 @@ impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> Tensor<ROWS, COLS
         let flat_index: usize = i * self.row_stride + j * self.col_stride;
         self.data[flat_index] = value;
     }
+    /// # Safety
+    /// The caller guarantees i < self.shape.0, j < self.shape.1.
+    pub unsafe fn get_unchecked(self: &Self, i: usize, j: usize) -> Scalar {
+        let flat_index: usize = i * self.row_stride + j * self.col_stride;
+        *self.data.get_unchecked(flat_index)
+    }
+    /// # Safety
+    /// The caller guarantees i < self.shape.0, j < self.shape.1.
+    pub unsafe fn set_unchecked(self: &mut Self, i: usize, j: usize, value: Scalar) -> () {
+        let flat_index: usize = i * self.row_stride + j * self.col_stride;
+        *self.data.get_unchecked_mut(flat_index) = value;
+    }
+    /// The flat, untransformed backing buffer. The last axis (COLS) always has
+    /// stride 1, so a caller that wants to walk it can index this buffer
+    /// directly with `row_offset(..) + j` instead of paying for a full
+    /// `get_unchecked` (which recomputes every stride term) on each step.
+    pub fn get_raw_buffer(&self) -> &[Scalar] {
+        &self.data
+    }
+    /// Flat offset of (i, 0) into `get_raw_buffer()` — the start of the
+    /// contiguous row along the last axis.
+    /// # Safety
+    /// The caller guarantees i < self.shape.0.
+    pub unsafe fn row_offset(self: &Self, i: usize) -> usize {
+        i * self.row_stride
+    }
     pub fn load_data(self: &mut Self, data: [Scalar; NUMEL]) -> () {
         self.data = data
     }

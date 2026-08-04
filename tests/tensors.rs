@@ -90,11 +90,12 @@ fn test_indexing_axis_overflow_transposed() {
 
 #[test]
 fn test_tensordot() {
-    // (2 x 3) . (3 x 2) -> (2 x 2)
+    // (2 x 3) . (2 x 3) -> (2 x 2) — b's contracted axis (3) is last, per the
+    // shared tensordot_1/2/3 convention.
     let mut a = Tensor::<2, 3, 6>::new();
     a.load_data([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
-    let mut b = Tensor::<3, 2, 6>::new();
-    b.load_data([7.0, 8.0, 9.0, 10.0, 11.0, 12.0]);
+    let mut b = Tensor::<2, 3, 6>::new();
+    b.load_data([7.0, 9.0, 11.0, 8.0, 10.0, 12.0]);
 
     let c: Tensor<2, 2, 4> = tensordot_1(&a, &b);
     assert_eq!(58.0, c.get(0, 0));
@@ -119,12 +120,12 @@ fn test_tensordot_identity() {
 
 #[test]
 fn test_tensordot_non_square() {
-    // (1 x 3) . (3 x 4) -> (1 x 4)
+    // (1 x 3) . (4 x 3) -> (1 x 4) — b's contracted axis (3) is last.
     let mut a = Tensor::<1, 3, 3>::new();
     a.load_data([1.0, 2.0, 3.0]);
-    let mut b = Tensor::<3, 4, 12>::new();
+    let mut b = Tensor::<4, 3, 12>::new();
     b.load_data([
-        1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0,
+        1.0, 5.0, 9.0, 2.0, 6.0, 10.0, 3.0, 7.0, 11.0, 4.0, 8.0, 12.0,
     ]);
 
     let c: Tensor<1, 4, 4> = tensordot_1(&a, &b);
@@ -140,18 +141,19 @@ fn test_tensordot_shape_out_of_sync_with_type() {
     // transpose ne change que la shape runtime : le type annonce toujours (2, 3)
     let mut a = Tensor::<2, 3, 6>::new();
     a.transpose();
-    let b = Tensor::<3, 2, 6>::new();
+    let b = Tensor::<2, 3, 6>::new();
     let _c: Tensor<2, 2, 4> = tensordot_1(&a, &b);
 }
 
 #[test]
 fn test_tensordot_2() {
-    // (2 x 2 x 2) . (2 x 2 x 3) -> (2 x 3)
+    // (2 x 2 x 2) . (3 x 2 x 2) -> (2 x 3) — b's contracted axes (2, 2) are
+    // last, per the shared tensordot_1/2/3 convention.
     let mut a = Tensor3D::<2, 2, 2, 8>::new();
     a.load_data([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]);
-    let mut b = Tensor3D::<2, 2, 3, 12>::new();
+    let mut b = Tensor3D::<3, 2, 2, 12>::new();
     b.load_data([
-        1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0,
+        1.0, 4.0, 7.0, 10.0, 2.0, 5.0, 8.0, 11.0, 3.0, 6.0, 9.0, 12.0,
     ]);
 
     let c: Tensor<2, 3, 6> = tensordot_2(&a, &b);
@@ -168,19 +170,21 @@ fn test_tensordot_2_matches_flattened_tensordot_1() {
     // contracter (K1, K2) revient a contracter un seul axe K1 * K2 sur les
     // memes donnees : c'est l'invariant sur lequel repose l'aplatissement.
     let a_data = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
+    // b's contracted axes are last, per the shared tensordot_1/2/3
+    // convention.
     let b_data = [
-        1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0,
+        1.0, 4.0, 7.0, 10.0, 2.0, 5.0, 8.0, 11.0, 3.0, 6.0, 9.0, 12.0,
     ];
 
     let mut a3 = Tensor3D::<2, 2, 2, 8>::new();
     a3.load_data(a_data);
-    let mut b3 = Tensor3D::<2, 2, 3, 12>::new();
+    let mut b3 = Tensor3D::<3, 2, 2, 12>::new();
     b3.load_data(b_data);
     let c3: Tensor<2, 3, 6> = tensordot_2(&a3, &b3);
 
     let mut a2 = Tensor::<2, 4, 8>::new();
     a2.load_data(a_data);
-    let mut b2 = Tensor::<4, 3, 12>::new();
+    let mut b2 = Tensor::<3, 4, 12>::new();
     b2.load_data(b_data);
     let c2: Tensor<2, 3, 6> = tensordot_1(&a2, &b2);
 
@@ -193,11 +197,12 @@ fn test_tensordot_2_matches_flattened_tensordot_1() {
 
 #[test]
 fn test_tensordot_2_single_inner_axis() {
-    // K2 = 1 : la contraction sur deux axes degenere en produit matriciel
+    // K2 = 1 : la contraction sur deux axes degenere en produit matriciel.
+    // b's contracted axes (3, 1) are last, per the shared convention.
     let mut a = Tensor3D::<2, 3, 1, 6>::new();
     a.load_data([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
-    let mut b = Tensor3D::<3, 1, 2, 6>::new();
-    b.load_data([7.0, 8.0, 9.0, 10.0, 11.0, 12.0]);
+    let mut b = Tensor3D::<2, 3, 1, 6>::new();
+    b.load_data([7.0, 9.0, 11.0, 8.0, 10.0, 12.0]);
 
     let c: Tensor<2, 2, 4> = tensordot_2(&a, &b);
     assert_eq!(58.0, c.get(0, 0));
@@ -236,9 +241,11 @@ fn test_tensordot_3() {
 #[test]
 fn test_tensordot_3_matches_flattened_tensordot_1() {
     // invariant im2col : contracter (C, KH, KW) revient a un produit matriciel
-    // (N * H_out * W_out, C * KH * KW) . (C * KH * KW, K) sur les memes donnees.
-    // Le buffer de `a` est deja dans le bon ordre (row-major), celui de `b` doit
-    // etre transpose puisqu'il est stocke en (K, C * KH * KW).
+    // (N * H_out * W_out, C * KH * KW) . (K, C * KH * KW) sur les memes
+    // donnees — b's contracted axis is last on both sides, per the shared
+    // tensordot_1/2/3 convention. Le buffer de `a` est deja dans le bon
+    // ordre (row-major), celui de `b` doit etre transpose puisqu'il est
+    // stocke en (K, C, KH, KW).
     const N: usize = 2;
     const H_OUT: usize = 2;
     const W_OUT: usize = 1;
@@ -262,11 +269,11 @@ fn test_tensordot_3_matches_flattened_tensordot_1() {
 
     let mut a2 = Tensor::<4, INNER, 16>::new();
     a2.load_data(a_data);
-    let mut b2 = Tensor::<INNER, K, 12>::new();
+    let mut b2 = Tensor::<K, INNER, 12>::new();
     for k in 0..K {
         for c in 0..2 {
             for p in 0..2 {
-                b2.set(c * 2 + p, k, b4.get(k, c, p, 0));
+                b2.set(k, c * 2 + p, b4.get(k, c, p, 0));
             }
         }
     }
