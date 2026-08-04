@@ -5,13 +5,14 @@ use ferrite::autodiff::layers::linear::Linear;
 use ferrite::autodiff::loss::mse;
 use ferrite::autodiff::optim::sgd::Sgd;
 use ferrite::autodiff::optim::train::train_step;
+use ferrite::linalg::tensor::Vector;
 use ferrite::seq;
-use ferrite::{Scalar, Vector};
+use ferrite::Scalar;
 
 #[test]
 fn seq_2_layers_forward_backward() {
-    let net = seq!(Linear::<2, 4>::from_seed(42), ReLU::<4> {});
-    let input = Vector::new([1.0, 0.5]);
+    let net = seq!(Linear::<2, 4, 8>::from_seed(42), ReLU::<4> {});
+    let input = Vector::from_data([1.0, 0.5]);
     let (output, ctx) = net.forward(input);
     let _ = net.backward(output, &ctx);
 }
@@ -19,12 +20,12 @@ fn seq_2_layers_forward_backward() {
 #[test]
 fn seq_3_layers_loss() {
     let net = seq!(
-        Linear::<2, 4>::from_seed(42),
+        Linear::<2, 4, 8>::from_seed(42),
         Tanh::<4> {},
-        Linear::<4, 1>::from_seed(99)
+        Linear::<4, 1, 4>::from_seed(99)
     );
-    let input = Vector::new([1.0, 0.5]);
-    let target = Vector::new([1.0]);
+    let input = Vector::from_data([1.0, 0.5]);
+    let target = Vector::from_data([1.0]);
     let (output, ctx) = net.forward(input);
     let (_, loss_grad) = mse(output, target);
     let _ = net.backward(loss_grad, &ctx);
@@ -32,8 +33,8 @@ fn seq_3_layers_loss() {
 
 #[test]
 fn seq_single_layer() {
-    let net = seq!(Linear::<3, 2>::from_seed(7));
-    let input = Vector::new([1.0, 0.0, -1.0]);
+    let net = seq!(Linear::<3, 2, 6>::from_seed(7));
+    let input = Vector::from_data([1.0, 0.0, -1.0]);
     let (output, ctx) = net.forward(input);
     let _ = net.backward(output, &ctx);
 }
@@ -41,12 +42,12 @@ fn seq_single_layer() {
 #[test]
 fn seq_training_step_decreases_loss() {
     let mut net = seq!(
-        Linear::<2, 8>::from_seed(42),
+        Linear::<2, 8, 16>::from_seed(42),
         Tanh::<8> {},
-        Linear::<8, 1>::from_seed(137)
+        Linear::<8, 1, 8>::from_seed(137)
     );
-    let input = Vector::new([1.0, 0.5]);
-    let target = Vector::new([1.0]);
+    let input = Vector::from_data([1.0, 0.5]);
+    let target = Vector::from_data([1.0]);
 
     let mut opt = Sgd::new(0.01);
     let loss = train_step(&mut net, &mut opt, input, target, mse);
@@ -62,9 +63,9 @@ fn seq_training_step_decreases_loss() {
 #[test]
 fn seq_training_step_decreases_loss_leaky_relu() {
     let mut net = seq!(
-        Linear::<2, 8>::from_seed(42),
+        Linear::<2, 8, 16>::from_seed(42),
         LeakyReLU::<8>::new(0.01),
-        Linear::<8, 1>::from_seed(137)
+        Linear::<8, 1, 8>::from_seed(137)
     );
     let dataset = [
         ([0.0, 0.0], [0.0]),
@@ -76,23 +77,29 @@ fn seq_training_step_decreases_loss_leaky_relu() {
     let loss_before: Scalar = dataset
         .iter()
         .map(|(x, y)| {
-            let (out, _) = net.forward(Vector::new(*x));
-            mse(out, Vector::new(*y)).0
+            let (out, _) = net.forward(Vector::from_data(*x));
+            mse(out, Vector::from_data(*y)).0
         })
         .sum();
 
     let mut opt = Sgd::new(0.01);
     for _ in 0..50 {
         for (x, y) in dataset {
-            train_step(&mut net, &mut opt, Vector::new(x), Vector::new(y), mse);
+            train_step(
+                &mut net,
+                &mut opt,
+                Vector::from_data(x),
+                Vector::from_data(y),
+                mse,
+            );
         }
     }
 
     let loss_after: Scalar = dataset
         .iter()
         .map(|(x, y)| {
-            let (out, _) = net.forward(Vector::new(*x));
-            mse(out, Vector::new(*y)).0
+            let (out, _) = net.forward(Vector::from_data(*x));
+            mse(out, Vector::from_data(*y)).0
         })
         .sum();
 
@@ -105,12 +112,12 @@ fn seq_training_step_decreases_loss_leaky_relu() {
 #[test]
 fn grad_check_linear_tanh_linear() {
     let net = seq!(
-        Linear::<2, 4>::from_seed(42),
+        Linear::<2, 4, 8>::from_seed(42),
         Tanh::<4> {},
-        Linear::<4, 1>::from_seed(99)
+        Linear::<4, 1, 4>::from_seed(99)
     );
-    let input = Vector::new([1.0, 0.5]);
-    let target = Vector::new([1.0]);
+    let input = Vector::from_data([1.0, 0.5]);
+    let target = Vector::from_data([1.0]);
 
     let result = GradChecker::check::<17, _, _>(net, input, target, mse, 1e-4);
 

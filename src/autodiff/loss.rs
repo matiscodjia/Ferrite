@@ -1,4 +1,4 @@
-use crate::linalg::vector::Vector;
+use crate::linalg::tensor::Vector;
 use crate::scalar::{log, Scalar};
 
 pub fn mse<const N: usize>(output: Vector<N>, target: Vector<N>) -> (Scalar, Vector<N>) {
@@ -9,7 +9,7 @@ pub fn mse<const N: usize>(output: Vector<N>, target: Vector<N>) -> (Scalar, Vec
         loss += diff * diff;
         grad_data[i] = 2.0 * diff / N as Scalar;
     }
-    (loss / N as Scalar, Vector::new(grad_data))
+    (loss / N as Scalar, Vector::from_data(grad_data))
 }
 
 pub fn mae<const N: usize>(output: Vector<N>, target: Vector<N>) -> (Scalar, Vector<N>) {
@@ -20,7 +20,7 @@ pub fn mae<const N: usize>(output: Vector<N>, target: Vector<N>) -> (Scalar, Vec
         loss += if diff >= 0.0 { diff } else { -diff };
         grad_data[i] = diff.signum() / N as Scalar;
     }
-    (loss / N as Scalar, Vector::new(grad_data))
+    (loss / N as Scalar, Vector::from_data(grad_data))
 }
 
 pub fn cross_entropy<const N: usize>(probs: Vector<N>, target: Vector<N>) -> (Scalar, Vector<N>) {
@@ -36,5 +36,5 @@ pub fn cross_entropy<const N: usize>(probs: Vector<N>, target: Vector<N>) -> (Sc
         loss -= target[i] * log(p);
         grad_data[i] = -target[i] / p;
     }
-    (loss, Vector::new(grad_data))
+    (loss, Vector::from_data(grad_data))
 }
