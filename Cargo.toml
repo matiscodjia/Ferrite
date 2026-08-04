@@ -9,7 +9,10 @@ keywords = ["no-std", "embedded", "deep-learning", "neural-network", "microcontr
 categories = ["no-std", "embedded", "science"]
 
 [dependencies]
-asm = "0.3.0"
+# Sonde de benchmark (asm!) : uniquement côté hôte, comme `regex` ci-dessous —
+# doit rester optionnelle pour que la cible bare-metal ne tente jamais de la
+# compiler.
+asm = { version = "0.3.0", optional = true }
 libm = { version = "0.2.16", default-features = false }
 # Sonde : parsing des en-têtes .npy, uniquement côté hôte. `regex` dépend de std,
 # donc la dépendance elle-même doit être optionnelle pour que la cible bare-metal
@@ -23,7 +26,7 @@ default = ["std"]
 # Le cœur (linalg, sp, scalar) ne dépend d'aucune de ces features : il compile nu.
 # `alloc` et `std` n'activent que l'instrumentation de test et de benchmark.
 alloc = []
-std = ["alloc", "dep:regex"]
+std = ["alloc", "dep:regex", "dep:asm"]
 # Active f64 partout dans le moteur (debug/gradient checking) — pas pour l'embarqué.
 f64 = []
 
