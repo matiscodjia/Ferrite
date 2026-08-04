@@ -119,6 +119,20 @@ impl<
             + j * self.col_stride;
         *self.data.get_unchecked_mut(flat_index) = value;
     }
+    /// The flat, untransformed backing buffer. The last axis (COLS) always has
+    /// stride 1, so a caller that wants to walk it can index this buffer
+    /// directly with `row_offset(..) + j` instead of paying for a full
+    /// `get_unchecked` (which recomputes every stride term) on each step.
+    pub fn get_raw_buffer(&self) -> &[Scalar] {
+        self.data.as_flat()
+    }
+    /// Flat offset of (b, c, i, 0) into `get_raw_buffer()` — the start of the
+    /// contiguous row along the last axis.
+    /// # Safety
+    /// The caller guarantees b < self.shape[0], c < self.shape[1], i < self.shape[2].
+    pub unsafe fn row_offset(self: &Self, b: usize, c: usize, i: usize) -> usize {
+        b * self.batch_stride + c * self.channel_stride + i * self.row_stride
+    }
     pub fn load_data(self: &mut Self, data: [Scalar; NUMEL]) -> () {
         *self.data = data
     }
