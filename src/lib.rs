@@ -18,6 +18,6 @@ pub mod scalar;
 pub mod sp;
 /// Re-export main types for simplified usage
 pub use linalg::{gram_schmidt, qr_decomposition, solve_linear_system};
-pub use linalg::{Matrix, Tensor, Vector};
+pub use linalg::{Tensor, Vector};
 pub use scalar::Scalar;
 pub use sp::cross_correlate2d;

@@ -4,16 +4,13 @@
 //! `no_std` target pays no allocation for an intermediate result.
 
 pub mod decomposition;
-pub mod matrix;
 pub mod storage;
 pub mod tensor;
-pub mod vector;
 
 pub use decomposition::{
     gram_schmidt, jacobi_rotation, qr_decomposition, solve_linear_system, solve_upper_triangular,
     svd, svd_2x2,
 };
-pub use matrix::Matrix;
 #[cfg(feature = "alloc")]
 pub use storage::HeapStorage;
 pub use storage::{OwnedStorage, StackStorage, Storage};
@@ -21,6 +18,5 @@ pub use storage::{OwnedStorage, StackStorage, Storage};
 pub use tensor::Tensor4DBoxed;
 pub use tensor::{
     tensordot_1, tensordot_2, tensordot_3, Rank6, Tensor, Tensor3D, Tensor4D, Tensor6D, TensorView,
-    TensorView6D,
+    TensorView6D, Vector,
 };
-pub use vector::Vector;
