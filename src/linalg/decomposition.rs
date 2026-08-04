@@ -1,5 +1,4 @@
-use crate::linalg::matrix::Matrix;
-use crate::linalg::vector::Vector;
+use crate::linalg::tensor::{Tensor, Vector};
 use crate::scalar::{fabs, sqrt, Scalar};
 
 const EPSILON: Scalar = Scalar::EPSILON;
@@ -9,7 +8,7 @@ const EPSILON: Scalar = Scalar::EPSILON;
 /// In this static version, we return an array of exactly N vectors.
 /// If a vector is linearly dependent, it will result in a null vector.
 pub fn gram_schmidt<const M: usize, const N: usize>(base: &[Vector<M>; N]) -> [Vector<M>; N] {
-    let mut orthogonal_basis = [Vector::<M>::new([0.0; M]); N];
+    let mut orthogonal_basis = [Vector::<M>::from_data([0.0; M]); N];
 
     for i in 0..N {
         let v = &base[i];
@@ -28,7 +27,7 @@ pub fn gram_schmidt<const M: usize, const N: usize>(base: &[Vector<M>; N]) -> [V
             orthogonal_basis[i] = q;
         } else {
             // Keep it as a null vector if it's not linearly independent
-            orthogonal_basis[i] = Vector::<M>::new([0.0; M]);
+            orthogonal_basis[i] = Vector::<M>::from_data([0.0; M]);
         }
     }
     orthogonal_basis
@@ -39,11 +38,16 @@ pub fn gram_schmidt<const M: usize, const N: usize>(base: &[Vector<M>; N]) -> [V
 /// Returns (Q, R) where:
 /// - Q is an M x N orthogonal matrix.
 /// - R is an N x N upper triangular matrix.
-pub fn qr_decomposition<const M: usize, const N: usize>(
-    mat: &Matrix<M, N>,
-) -> (Matrix<M, N>, Matrix<N, N>) {
+pub fn qr_decomposition<
+    const M: usize,
+    const N: usize,
+    const NUMEL_MN: usize,
+    const NUMEL_NN: usize,
+>(
+    mat: &Tensor<M, N, NUMEL_MN>,
+) -> (Tensor<M, N, NUMEL_MN>, Tensor<N, N, NUMEL_NN>) {
     // 1. Extract columns into a fixed-size array
-    let mut cols = [Vector::<M>::new([0.0; M]); N];
+    let mut cols = [Vector::<M>::from_data([0.0; M]); N];
     for j in 0..N {
         cols[j] = mat.get_col(j).unwrap();
     }
@@ -52,12 +56,12 @@ pub fn qr_decomposition<const M: usize, const N: usize>(
     let ortho_cols = gram_schmidt::<M, N>(&cols);
 
     // 3. Create Q from the orthonormal columns
-    let q = Matrix::<M, N>::from_cols(ortho_cols);
+    let q: Tensor<M, N, NUMEL_MN> = Tensor::from_cols(ortho_cols);
 
     // 4. Calculate R = Q^T * mat
     // Resulting R is N x N
-    let mut r = Matrix::<N, N>::new();
-    r.matmul_accumulate(&q.transpose(), mat);
+    let mut r = Tensor::<N, N, NUMEL_NN>::new();
+    r.matmul_accumulate(&q.transposed(), mat);
 
     (q, r)
 }
@@ -65,12 +69,12 @@ pub fn qr_decomposition<const M: usize, const N: usize>(
 /// Solves an upper triangular system Rx = b using back-substitution.
 ///
 /// R is an N x N matrix, b is a Vector of size N.
-pub fn solve_upper_triangular<const N: usize>(
-    r: &Matrix<N, N>,
+pub fn solve_upper_triangular<const N: usize, const NUMEL_NN: usize>(
+    r: &Tensor<N, N, NUMEL_NN>,
     b: &Vector<N>,
 ) -> Option<Vector<N>> {
     let mut x_data = [0.0; N];
-    let b_data = b.get_data();
+    let b_data = b.get_raw_buffer();
 
     for i in (0..N).rev() {
         let diag = r[(i, i)];
@@ -87,17 +91,22 @@ pub fn solve_upper_triangular<const N: usize>(
         x_data[i] = (b_data[i] - sum) / diag;
     }
 
-    Some(Vector::new(x_data))
+    Some(Vector::from_data(x_data))
 }
 
 /// Solves a linear system Ax = b using QR decomposition.
 ///
 /// A is M x N, b is size M, result x is size N.
-pub fn solve_linear_system<const M: usize, const N: usize>(
-    a: &Matrix<M, N>,
+pub fn solve_linear_system<
+    const M: usize,
+    const N: usize,
+    const NUMEL_MN: usize,
+    const NUMEL_NN: usize,
+>(
+    a: &Tensor<M, N, NUMEL_MN>,
     b: &Vector<M>,
 ) -> Option<Vector<N>> {
-    let (q, r) = qr_decomposition(a);
+    let (q, r) = qr_decomposition::<M, N, NUMEL_MN, NUMEL_NN>(a);
 
     // Compute c = Q^T * b (Vector of size N)
     let mut c_data = [0.0; N];
@@ -105,16 +114,16 @@ pub fn solve_linear_system<const M: usize, const N: usize>(
         let q_col = q.get_col(i).unwrap();
         c_data[i] = q_col.dot(b);
     }
-    let c = Vector::new(c_data);
+    let c = Vector::from_data(c_data);
 
     // Solve Rx = c
     solve_upper_triangular(&r, &c)
 }
 
-fn sort_svd<const M: usize, const N: usize>(
+fn sort_svd<const M: usize, const N: usize, const NUMEL_MN: usize, const NUMEL_NN: usize>(
     sigma: &mut Vector<N>,
-    u: &mut Matrix<M, N>,
-    v: &mut Matrix<N, N>,
+    u: &mut Tensor<M, N, NUMEL_MN>,
+    v: &mut Tensor<N, N, NUMEL_NN>,
 ) {
     for i in 0..N {
         let mut max_idx = i;
@@ -153,7 +162,7 @@ pub fn jacobi_rotation(p: Scalar, q: Scalar, d: Scalar) -> (Scalar, Scalar) {
     }
 }
 
-pub fn svd_2x2(mat: &Matrix<2, 2>) -> (Matrix<2, 2>, Vector<2>, Matrix<2, 2>) {
+pub fn svd_2x2(mat: &Tensor<2, 2, 4>) -> (Tensor<2, 2, 4>, Vector<2>, Tensor<2, 2, 4>) {
     let (a, b) = (mat.get_col(0).unwrap(), mat.get_col(1).unwrap());
     let p = a.dot(&a);
     let q = b.dot(&b);
@@ -175,22 +184,22 @@ pub fn svd_2x2(mat: &Matrix<2, 2>) -> (Matrix<2, 2>, Vector<2>, Matrix<2, 2>) {
         b_prime
     };
 
-    let u = Matrix::from_cols([u1, u2]);
-    let mut v = Matrix::<2, 2>::new();
+    let u: Tensor<2, 2, 4> = Tensor::from_cols([u1, u2]);
+    let mut v = Tensor::<2, 2, 4>::new();
     v[(0, 0)] = cos;
     v[(0, 1)] = sin;
     v[(1, 0)] = -sin;
     v[(1, 1)] = cos;
-    let sigma = Vector::new([sigma_1, sigma_2]);
+    let sigma = Vector::from_data([sigma_1, sigma_2]);
 
     (u, sigma, v)
 }
 
-pub fn svd<const M: usize, const N: usize>(
-    mat: &Matrix<M, N>,
-) -> (Matrix<M, N>, Vector<N>, Matrix<N, N>) {
+pub fn svd<const M: usize, const N: usize, const NUMEL_MN: usize, const NUMEL_NN: usize>(
+    mat: &Tensor<M, N, NUMEL_MN>,
+) -> (Tensor<M, N, NUMEL_MN>, Vector<N>, Tensor<N, N, NUMEL_NN>) {
     let mut b = *mat;
-    let mut v = Matrix::<N, N>::identity();
+    let mut v = Tensor::<N, N, NUMEL_NN>::identity();
     let max_iter = 100 * N * N;
     let mut iter = 0;
 
@@ -231,8 +240,8 @@ pub fn svd<const M: usize, const N: usize>(
         }
     }
 
-    let mut sigma = Vector::<N>::new([0.0; N]);
-    let mut u = Matrix::<M, N>::new();
+    let mut sigma = Vector::<N>::from_data([0.0; N]);
+    let mut u = Tensor::<M, N, NUMEL_MN>::new();
 
     for i in 0..N {
         let col = b.get_col(i).unwrap();
