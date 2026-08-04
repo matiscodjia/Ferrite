@@ -5,6 +5,7 @@ use ferrite::linalg::tensor::Tensor;
 use ferrite::linalg::tensor::Tensor3D;
 use ferrite::linalg::tensor::Tensor4D;
 use ferrite::linalg::tensor::Tensor6D;
+use ferrite::linalg::tensor::Vector;
 use ferrite::scalar::Scalar;
 #[test]
 //This is a compilation level test, test NOK = No compilation
@@ -727,4 +728,210 @@ fn test_mixed_storage_operands() {
 
     assert_eq!(10.0, out.get(0, 0, 0, 0)); // 0+1+4+5
     assert_eq!(14.0, out.get(0, 0, 1, 0)); // 1+2+5+6
+}
+
+// --- Tensor operator/method parity (Matrix/Vector role) ---
+
+#[test]
+fn test_tensor_rows_cols() {
+    let m = Tensor::<2, 3, 6>::new();
+    assert_eq!(m.rows(), 2);
+    assert_eq!(m.cols(), 3);
+}
+
+#[test]
+fn test_tensor_index_get_set() {
+    let mut m = Tensor::<2, 2, 4>::new();
+    m[(0, 1)] = 42.0;
+    assert_eq!(m[(0, 1)], 42.0);
+    assert_eq!(m[(1, 1)], 0.0);
+}
+
+#[test]
+#[should_panic]
+fn test_tensor_index_out_of_bounds() {
+    let m = Tensor::<2, 2, 4>::new();
+    let _ = m[(2, 0)];
+}
+
+#[test]
+fn test_tensor_addition() {
+    let mut m1 = Tensor::<2, 2, 4>::new();
+    m1[(0, 0)] = 1.0;
+    let mut m2 = Tensor::<2, 2, 4>::new();
+    m2[(0, 0)] = 2.0;
+    assert_eq!(m1 + m2, {
+        let mut res = Tensor::<2, 2, 4>::new();
+        res[(0, 0)] = 3.0;
+        res
+    });
+}
+
+#[test]
+fn test_tensor_multiply() {
+    let mut m1 = Tensor::<2, 2, 4>::new();
+    m1[(0, 0)] = 1.0;
+    m1[(0, 1)] = 2.0;
+    m1[(1, 0)] = 3.0;
+    m1[(1, 1)] = 4.0;
+    let mut m2 = Tensor::<2, 1, 2>::new();
+    m2[(0, 0)] = 5.0;
+    m2[(1, 0)] = 6.0;
+    let res: Tensor<2, 1, 2> = m1.multiply(&m2);
+    assert_eq!(res[(0, 0)], 17.0);
+    assert_eq!(res[(1, 0)], 39.0);
+}
+
+#[test]
+fn test_tensor_matmul_accumulate() {
+    let mut res = Tensor::<1, 1, 1>::new();
+    res[(0, 0)] = 10.0;
+    let m1 = Tensor::<1, 1, 1>::identity();
+    let m2 = Tensor::<1, 1, 1>::identity();
+    res.matmul_accumulate(&m1, &m2);
+    assert_eq!(res[(0, 0)], 11.0);
+}
+
+#[test]
+fn test_tensor_transposed() {
+    let mut m = Tensor::<1, 2, 2>::new();
+    m[(0, 0)] = 1.0;
+    m[(0, 1)] = 2.0;
+    let t = m.transposed();
+    assert_eq!(t.rows(), 2);
+    assert_eq!(t.cols(), 1);
+    assert_eq!(t[(1, 0)], 2.0);
+}
+
+#[test]
+fn test_tensor_col_extraction() {
+    let mut m = Tensor::<2, 2, 4>::new();
+    m[(0, 1)] = 5.0;
+    m[(1, 1)] = 10.0;
+    let col = m.get_col(1).unwrap();
+    assert_eq!(col, Vector::from_data([5.0, 10.0]));
+}
+
+#[test]
+fn test_tensor_from_cols() {
+    let v1 = Vector::from_data([1.0, 2.0]);
+    let v2 = Vector::from_data([3.0, 4.0]);
+    let m: Tensor<2, 2, 4> = Tensor::from_cols([v1, v2]);
+    assert_eq!(m[(1, 0)], 2.0);
+    assert_eq!(m[(1, 1)], 4.0);
+}
+
+#[test]
+fn test_tensor_identity() {
+    let id = Tensor::<3, 3, 9>::identity();
+    assert_eq!(id[(0, 0)], 1.0);
+    assert_eq!(id[(0, 1)], 0.0);
+    assert_eq!(id[(1, 1)], 1.0);
+    assert_eq!(id[(2, 2)], 1.0);
+}
+
+// --- Vector (Tensor<N, 1, N>) role ---
+
+#[test]
+fn test_vector_creation_and_dim() {
+    let v: Vector<3> = Vector::from_data([1.0, 2.0, 3.0]);
+    assert_eq!(v.dim(), 3);
+}
+
+#[test]
+fn test_vector_l1_norm() {
+    let v = Vector::from_data([1.0, -2.0, 3.0]);
+    assert_eq!(v.l1_norm(), 6.0);
+}
+
+#[test]
+fn test_vector_l2_norm() {
+    let v = Vector::from_data([3.0, 4.0]);
+    assert_eq!(v.l2_norm(), 5.0);
+}
+
+#[test]
+fn test_vector_inf_norm() {
+    let v = Vector::from_data([-10.0, 2.0, 5.0]);
+    assert_eq!(v.inf_norm(), 10.0);
+}
+
+#[test]
+fn test_vector_dot_product() {
+    let v1 = Vector::from_data([1.0, 2.0]);
+    let v2 = Vector::from_data([3.0, 4.0]);
+    assert_eq!(v1.dot(&v2), 11.0);
+}
+
+#[test]
+fn test_vector_addition() {
+    let v1 = Vector::from_data([1.0, 2.0]);
+    let v2 = Vector::from_data([3.0, 4.0]);
+    assert_eq!(v1 + v2, Vector::from_data([4.0, 6.0]));
+}
+
+#[test]
+fn test_vector_subtraction() {
+    let v1 = Vector::from_data([5.0, 7.0]);
+    let v2 = Vector::from_data([2.0, 3.0]);
+    assert_eq!(v1 - v2, Vector::from_data([3.0, 4.0]));
+}
+
+#[test]
+fn test_vector_scalar_mul() {
+    let v = Vector::from_data([1.0, -2.0]);
+    assert_eq!(v * 3.0, Vector::from_data([3.0, -6.0]));
+}
+
+#[test]
+fn test_vector_neg() {
+    let v = Vector::from_data([1.0, -2.0]);
+    assert_eq!(-v, Vector::from_data([-1.0, 2.0]));
+}
+
+#[test]
+fn test_vector_div() {
+    let v = Vector::from_data([2.0, -4.0]);
+    assert_eq!(v / 2.0, Vector::from_data([1.0, -2.0]));
+}
+
+#[test]
+fn test_vector_hadamard() {
+    let v1 = Vector::from_data([2.0, 3.0]);
+    let v2 = Vector::from_data([4.0, 5.0]);
+    assert_eq!(v1.hadamard(&v2), Vector::from_data([8.0, 15.0]));
+}
+
+#[test]
+fn test_vector_sum() {
+    let v = Vector::from_data([1.0, 2.0, 3.0]);
+    assert_eq!(v.sum(), 6.0);
+}
+
+#[test]
+fn test_vector_index() {
+    let mut v = Vector::<2>::from_data([1.0, 2.0]);
+    assert_eq!(v[0], 1.0);
+    v[1] = 5.0;
+    assert_eq!(v[1], 5.0);
+}
+
+#[test]
+fn test_vector_projection() {
+    let v = Vector::from_data([1.0, 1.0]);
+    let target = Vector::from_data([1.0, 0.0]);
+    assert_eq!(
+        v.orthogonal_projection(&target),
+        Vector::from_data([1.0, 0.0])
+    );
+}
+
+#[test]
+fn test_vector_null_projection() {
+    let v = Vector::from_data([1.0, 2.0]);
+    let null_v = Vector::<2>::from_data([0.0, 0.0]);
+    assert_eq!(
+        v.orthogonal_projection(&null_v),
+        Vector::from_data([0.0, 0.0])
+    );
 }
