@@ -188,16 +188,19 @@ where
     for n in 0..N {
         for i in 0..H_OUT {
             for j in 0..W_OUT {
-                for k in 0..K {
-                    let mut sum: Scalar = 0.0;
-                    for ch in 0..C {
-                        for p in 0..KH {
-                            for q in 0..KW {
-                                sum += a.get(n, i, j, ch, p, q) * b.get(k, ch, p, q);
+                let mut sums: [Scalar; K] = [0.0; K];
+                for ch in 0..C {
+                    for p in 0..KH {
+                        for q in 0..KW {
+                            let av = a.get(n, i, j, ch, p, q);
+                            for k in 0..K {
+                                sums[k] += av * b.get(k, ch, p, q);
                             }
                         }
                     }
-                    c.set(n, i, j, k, sum);
+                }
+                for k in 0..K {
+                    c.set(n, i, j, k, sums[k]);
                 }
             }
         }
