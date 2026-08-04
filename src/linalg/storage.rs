@@ -11,8 +11,8 @@ use core::ops::{Deref, DerefMut};
 /// Un bloc contigu de `LEN` scalaires, de taille connue à la compilation.
 ///
 /// Générique sur le *type de buffer* plutôt que sur un simple `NUMEL` : ça
-/// couvre aussi bien `[Scalar; N]` que les arrays imbriqués (`[[Scalar; C]; R]`
-/// de `Matrix`), donc un seul mécanisme de stockage pour toute la crate.
+/// couvre aussi bien `[Scalar; N]` que les arrays imbriqués (`[[Scalar; C]; R]`),
+/// donc un seul mécanisme de stockage pour toute la crate.
 ///
 /// # Safety
 ///

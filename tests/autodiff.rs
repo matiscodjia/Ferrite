@@ -6,15 +6,15 @@ use ferrite::autodiff::layers::linear::Linear;
 use ferrite::autodiff::loss::{cross_entropy, mse};
 use ferrite::autodiff::optim::sgd::Sgd;
 use ferrite::autodiff::optim::train::train_step;
-use ferrite::linalg::tensor::Vector;
+use ferrite::linalg::tensor::{Tensor, Vector};
 use ferrite::seq;
-use ferrite::{Matrix, Scalar};
+use ferrite::Scalar;
 
 #[test]
-fn test_integration_vector_matrix() {
+fn test_integration_vector_tensor() {
     let v = Vector::from_data([1.0, 2.0]);
     assert_eq!(v.dim(), 2);
-    let m = Matrix::<2, 2>::new();
+    let m = Tensor::<2, 2, 4>::new();
     assert_eq!(m.rows(), 2);
 }
 

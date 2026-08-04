@@ -19,13 +19,6 @@ pub use tensor4d::Tensor4D;
 pub use tensor4d::Tensor4DBoxed;
 
 pub use contraction::{tensordot_1, tensordot_2, tensordot_3};
-pub use tensor2d::{Tensor, TensorView};
+pub use tensor2d::{Tensor, TensorView, Vector};
 pub use tensor3d::Tensor3D;
 pub use tensor6d::{Rank6, Tensor6D, TensorView6D};
-
-// `Vector` isn't re-exported from `linalg::mod.rs` yet — `linalg::vector::Vector`
-// (the old type, being phased out) still claims that name at the top level.
-// Callers within the crate that want the new alias use this path directly;
-// `linalg/mod.rs` switches its top-level `Vector` re-export over once the old
-// type is deleted.
-pub use tensor2d::Vector;
