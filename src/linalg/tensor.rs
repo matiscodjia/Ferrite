@@ -19,7 +19,7 @@ pub struct TensorView<'a> {
 }
 impl<'a> TensorView<'a> {
     pub fn get(self: &Self, i: usize, j: usize) -> Scalar {
-        assert!(i < self.shape.0 && j < self.shape.1);
+        debug_assert!(i < self.shape.0 && j < self.shape.1);
         let flat_index: usize = i * self.row_stride + j * self.col_stride;
         let index: usize = flat_index + self.reference_index;
         self.data[index]
@@ -158,6 +158,7 @@ impl<
 ///
 /// The shared dimensions C, KH and KW are enforced by the signature, and
 /// `NUMEL_C == N * H_OUT * W_OUT * K` by `Tensor4D::new` — both at compile time.
+#[inline(never)]
 pub fn tensordot_3<
     A,
     const N: usize,
@@ -217,12 +218,12 @@ impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> Tensor<ROWS, COLS
         }
     }
     pub fn get(self: &Self, i: usize, j: usize) -> Scalar {
-        assert!(i < self.shape.0 && j < self.shape.1);
+        debug_assert!(i < self.shape.0 && j < self.shape.1);
         let flat_index: usize = i * self.row_stride + j * self.col_stride;
         self.data[flat_index]
     }
     pub fn set(self: &mut Self, i: usize, j: usize, value: Scalar) -> () {
-        assert!(i < self.shape.0 && j < self.shape.1);
+        debug_assert!(i < self.shape.0 && j < self.shape.1);
         let flat_index: usize = i * self.row_stride + j * self.col_stride;
         self.data[flat_index] = value;
     }
@@ -280,12 +281,12 @@ impl<const CHANNELS: usize, const ROWS: usize, const COLS: usize, const NUMEL: u
         }
     }
     pub fn get(self: &Self, c: usize, i: usize, j: usize) -> Scalar {
-        assert!(c < self.shape[0] && i < self.shape[1] && j < self.shape[2]);
+        debug_assert!(c < self.shape[0] && i < self.shape[1] && j < self.shape[2]);
         let flat_index: usize = c * self.channel_stride + i * self.row_stride + j * self.col_stride;
         self.data[flat_index]
     }
     pub fn set(self: &mut Self, c: usize, i: usize, j: usize, value: Scalar) -> () {
-        assert!(c < self.shape[0] && i < self.shape[1] && j < self.shape[2]);
+        debug_assert!(c < self.shape[0] && i < self.shape[1] && j < self.shape[2]);
         let flat_index: usize = c * self.channel_stride + i * self.row_stride + j * self.col_stride;
         self.data[flat_index] = value;
     }
@@ -365,7 +366,9 @@ impl<
     }
 
     pub fn get(self: &Self, b: usize, c: usize, i: usize, j: usize) -> Scalar {
-        assert!(b < self.shape[0] && c < self.shape[1] && i < self.shape[2] && j < self.shape[3]);
+        debug_assert!(
+            b < self.shape[0] && c < self.shape[1] && i < self.shape[2] && j < self.shape[3]
+        );
         let flat_index: usize = b * self.batch_stride
             + c * self.channel_stride
             + i * self.row_stride
@@ -373,7 +376,9 @@ impl<
         self.data[flat_index]
     }
     pub fn set(self: &mut Self, b: usize, c: usize, i: usize, j: usize, value: Scalar) -> () {
-        assert!(b < self.shape[0] && c < self.shape[1] && i < self.shape[2] && j < self.shape[3]);
+        debug_assert!(
+            b < self.shape[0] && c < self.shape[1] && i < self.shape[2] && j < self.shape[3]
+        );
         let flat_index: usize = b * self.batch_stride
             + c * self.channel_stride
             + i * self.row_stride
@@ -476,7 +481,7 @@ impl<
     /// expected by `tensordot_3`. The underlying buffer stays the (N x C x H x W)
     /// input tensor: only the strides move.
     pub fn get(self: &Self, n: usize, i: usize, j: usize, c: usize, p: usize, q: usize) -> Scalar {
-        assert!(
+        debug_assert!(
             n < self.shape[0]
                 && i < self.shape[1]
                 && j < self.shape[2]
@@ -541,7 +546,7 @@ impl<
         }
     }
     pub fn get(self: &Self, b: usize, g: usize, c: usize, d: usize, i: usize, j: usize) -> Scalar {
-        assert!(
+        debug_assert!(
             b < self.shape[0]
                 && g < self.shape[1]
                 && c < self.shape[2]
@@ -567,7 +572,7 @@ impl<
         j: usize,
         value: Scalar,
     ) -> () {
-        assert!(
+        debug_assert!(
             b < self.shape[0]
                 && g < self.shape[1]
                 && c < self.shape[2]
