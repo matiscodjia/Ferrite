@@ -117,6 +117,23 @@ pub trait Rank6<
         i4: usize,
         i5: usize,
     ) -> Scalar;
+    /// The flat, untransformed backing buffer. Every `Rank6` implementor stores its
+    /// last axis (D5) with stride 1, so a caller that wants to walk that axis can
+    /// index this buffer directly with `row_offset(..) + i5` instead of paying for
+    /// a full `get_unchecked` (which recomputes every stride term) on each step.
+    fn get_raw_buffer(self: &Self) -> &[Scalar];
+    /// Flat offset of (i0, i1, i2, i3, i4, 0) into `get_raw_buffer()` — the start of
+    /// the contiguous row along the last axis.
+    /// # Safety
+    /// The caller guarantees i0 < D0, i1 < D1, i2 < D2, i3 < D3, i4 < D4.
+    unsafe fn row_offset(
+        self: &Self,
+        i0: usize,
+        i1: usize,
+        i2: usize,
+        i3: usize,
+        i4: usize,
+    ) -> usize;
     fn shape(self: &Self) -> [usize; 6];
 }
 
@@ -144,6 +161,16 @@ impl<
         j: usize,
     ) -> Scalar {
         Tensor6D::get_unchecked(self, b, g, c, d, i, j)
+    }
+    fn get_raw_buffer(self: &Self) -> &[Scalar] {
+        &self.data
+    }
+    unsafe fn row_offset(self: &Self, b: usize, g: usize, c: usize, d: usize, i: usize) -> usize {
+        b * self.batch_stride
+            + g * self.group_stride
+            + c * self.channel_stride
+            + d * self.depth_stride
+            + i * self.row_stride
     }
     fn shape(self: &Self) -> [usize; 6] {
         self.shape
@@ -175,6 +202,17 @@ impl<
         q: usize,
     ) -> Scalar {
         TensorView6D::get_unchecked(self, n, i, j, c, p, q)
+    }
+    fn get_raw_buffer(self: &Self) -> &[Scalar] {
+        self.data
+    }
+    unsafe fn row_offset(self: &Self, n: usize, i: usize, j: usize, c: usize, p: usize) -> usize {
+        n * self.n_stride
+            + i * self.h_out_stride
+            + j * self.w_out_stride
+            + c * self.channel_stride
+            + p * self.kh_stride
+            + self.reference_index
     }
     fn shape(self: &Self) -> [usize; 6] {
         self.shape
@@ -257,11 +295,16 @@ where
                 let mut sums: [Scalar; K] = [0.0; K];
                 for ch in 0..C {
                     for p in 0..KH {
+                        // SAFETY: n < N, i < H_OUT, j < W_OUT, ch < C, p < KH sont garantis
+                        // par les bornes des boucles for englobantes.
+                        let a_base = unsafe { a.row_offset(n, i, j, ch, p) };
+                        let a_row = a.get_raw_buffer();
                         for q in 0..KW {
-                            // SAFETY: n < N, i < H_OUT, j < W_OUT sont garantis par les bornes des
-                            // boucles for englobantes ; ch < C, p < KH, q < KW de même — jamais de
-                            // valeur hors de ces plages ne peut atteindre cet appel.
-                            let av = unsafe { a.get_unchecked(n, i, j, ch, p, q) };
+                            // SAFETY: KW a un stride de 1 dans tout Rank6 (dernier axe
+                            // toujours contigu, par construction de row_offset/get_raw_buffer),
+                            // donc a_base + q est l'indice plat de (n, i, j, ch, p, q) ; q < KW
+                            // est garanti par la boucle for englobante.
+                            let av = unsafe { *a_row.get_unchecked(a_base + q) };
                             for k in 0..K {
                                 // SAFETY: k < K, ch < C, p < KH, q < KW sont garantis par les
                                 // bornes des boucles for englobantes, et b.shape == [K, C, KH, KW]
