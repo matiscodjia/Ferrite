@@ -9,6 +9,7 @@ keywords = ["no-std", "embedded", "deep-learning", "neural-network", "microcontr
 categories = ["no-std", "embedded", "science"]
 
 [dependencies]
+asm = "0.3.0"
 libm = { version = "0.2.16", default-features = false }
 # Sonde : parsing des en-têtes .npy, uniquement côté hôte. `regex` dépend de std,
 # donc la dépendance elle-même doit être optionnelle pour que la cible bare-metal
@@ -33,3 +34,13 @@ f64 = []
 name = "ferrite"
 path = "src/main.rs"
 required-features = ["std"]
+
+[dev-dependencies]
+cargo-show-asm = "0.2.62"
+criterion = "0.8.2"
+
+[[bench]]
+name = "eval_tensordot"
+harness = false
+
+
