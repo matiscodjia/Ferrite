@@ -106,6 +106,17 @@ pub trait Rank6<
 {
     fn get(self: &Self, i0: usize, i1: usize, i2: usize, i3: usize, i4: usize, i5: usize)
         -> Scalar;
+    /// # Safety
+    /// The caller guarantees i0 < D0, i1 < D1, i2 < D2, i3 < D3, i4 < D4, i5 < D5.
+    unsafe fn get_unchecked(
+        self: &Self,
+        i0: usize,
+        i1: usize,
+        i2: usize,
+        i3: usize,
+        i4: usize,
+        i5: usize,
+    ) -> Scalar;
     fn shape(self: &Self) -> [usize; 6];
 }
 
@@ -122,6 +133,17 @@ impl<
 {
     fn get(self: &Self, b: usize, g: usize, c: usize, d: usize, i: usize, j: usize) -> Scalar {
         Tensor6D::get(self, b, g, c, d, i, j)
+    }
+    unsafe fn get_unchecked(
+        self: &Self,
+        b: usize,
+        g: usize,
+        c: usize,
+        d: usize,
+        i: usize,
+        j: usize,
+    ) -> Scalar {
+        Tensor6D::get_unchecked(self, b, g, c, d, i, j)
     }
     fn shape(self: &Self) -> [usize; 6] {
         self.shape
@@ -143,11 +165,55 @@ impl<
     fn get(self: &Self, n: usize, i: usize, j: usize, c: usize, p: usize, q: usize) -> Scalar {
         TensorView6D::get(self, n, i, j, c, p, q)
     }
+    unsafe fn get_unchecked(
+        self: &Self,
+        n: usize,
+        i: usize,
+        j: usize,
+        c: usize,
+        p: usize,
+        q: usize,
+    ) -> Scalar {
+        TensorView6D::get_unchecked(self, n, i, j, c, p, q)
+    }
     fn shape(self: &Self) -> [usize; 6] {
         self.shape
     }
 }
+impl<
+        'a,
+        const N: usize,
+        const C: usize,
+        const H: usize,
+        const W: usize,
+        const H_OUT: usize,
+        const W_OUT: usize,
+        const KH: usize,
+        const KW: usize,
+    > TensorView6D<'a, N, C, H, W, H_OUT, W_OUT, KH, KW>
+{
+    /// # Safety
+    /// L'appelant garantit que n < N, i < H_OUT, j < W_OUT, c < C, p < KH, q < KW.
+    pub unsafe fn get_unchecked(
+        &self,
+        n: usize,
+        i: usize,
+        j: usize,
+        c: usize,
+        p: usize,
+        q: usize,
+    ) -> Scalar {
+        let flat_index: usize = n * self.n_stride
+            + i * self.h_out_stride
+            + j * self.w_out_stride
+            + c * self.channel_stride
+            + p * self.kh_stride
+            + q * self.kw_stride;
+        let index: usize = flat_index + self.reference_index;
 
+        *self.data.get_unchecked(index)
+    }
+}
 /// Contracts the last three axes of `a` with the last three axes of `b`:
 /// (N x H_OUT x W_OUT x C x KH x KW) . (K x C x KH x KW) -> (N x H_OUT x W_OUT x K).
 ///
@@ -192,15 +258,24 @@ where
                 for ch in 0..C {
                     for p in 0..KH {
                         for q in 0..KW {
-                            let av = a.get(n, i, j, ch, p, q);
+                            // SAFETY: n < N, i < H_OUT, j < W_OUT sont garantis par les bornes des
+                            // boucles for englobantes ; ch < C, p < KH, q < KW de même — jamais de
+                            // valeur hors de ces plages ne peut atteindre cet appel.
+                            let av = unsafe { a.get_unchecked(n, i, j, ch, p, q) };
                             for k in 0..K {
-                                sums[k] += av * b.get(k, ch, p, q);
+                                // SAFETY: k < K, ch < C, p < KH, q < KW sont garantis par les
+                                // bornes des boucles for englobantes, et b.shape == [K, C, KH, KW]
+                                // est vérifié par l'assert! en tête de fonction.
+                                sums[k] += av * unsafe { b.get_unchecked(k, ch, p, q) };
                             }
                         }
                     }
                 }
                 for k in 0..K {
-                    c.set(n, i, j, k, sums[k]);
+                    // SAFETY: n < N, i < H_OUT, j < W_OUT, k < K sont garantis par les bornes
+                    // des boucles for englobantes ; c vient d'être créé avec shape [N, H_OUT,
+                    // W_OUT, K].
+                    unsafe { c.set_unchecked(n, i, j, k, sums[k]) };
                 }
             }
         }
@@ -387,6 +462,33 @@ impl<
             + i * self.row_stride
             + j * self.col_stride;
         self.data[flat_index] = value;
+    }
+    /// # Safety
+    /// The caller guarantees b < self.shape[0], c < self.shape[1], i < self.shape[2],
+    /// j < self.shape[3].
+    pub unsafe fn get_unchecked(self: &Self, b: usize, c: usize, i: usize, j: usize) -> Scalar {
+        let flat_index: usize = b * self.batch_stride
+            + c * self.channel_stride
+            + i * self.row_stride
+            + j * self.col_stride;
+        *self.data.get_unchecked(flat_index)
+    }
+    /// # Safety
+    /// The caller guarantees b < self.shape[0], c < self.shape[1], i < self.shape[2],
+    /// j < self.shape[3].
+    pub unsafe fn set_unchecked(
+        self: &mut Self,
+        b: usize,
+        c: usize,
+        i: usize,
+        j: usize,
+        value: Scalar,
+    ) -> () {
+        let flat_index: usize = b * self.batch_stride
+            + c * self.channel_stride
+            + i * self.row_stride
+            + j * self.col_stride;
+        *self.data.get_unchecked_mut(flat_index) = value;
     }
     pub fn load_data(self: &mut Self, data: [Scalar; NUMEL]) -> () {
         *self.data = data
@@ -590,6 +692,47 @@ impl<
             + i * self.row_stride
             + j * self.col_stride;
         self.data[flat_index] = value;
+    }
+    /// # Safety
+    /// The caller guarantees b < self.shape[0], g < self.shape[1], c < self.shape[2],
+    /// d < self.shape[3], i < self.shape[4], j < self.shape[5].
+    pub unsafe fn get_unchecked(
+        self: &Self,
+        b: usize,
+        g: usize,
+        c: usize,
+        d: usize,
+        i: usize,
+        j: usize,
+    ) -> Scalar {
+        let flat_index: usize = b * self.batch_stride
+            + g * self.group_stride
+            + c * self.channel_stride
+            + d * self.depth_stride
+            + i * self.row_stride
+            + j * self.col_stride;
+        *self.data.get_unchecked(flat_index)
+    }
+    /// # Safety
+    /// The caller guarantees b < self.shape[0], g < self.shape[1], c < self.shape[2],
+    /// d < self.shape[3], i < self.shape[4], j < self.shape[5].
+    pub unsafe fn set_unchecked(
+        self: &mut Self,
+        b: usize,
+        g: usize,
+        c: usize,
+        d: usize,
+        i: usize,
+        j: usize,
+        value: Scalar,
+    ) -> () {
+        let flat_index: usize = b * self.batch_stride
+            + g * self.group_stride
+            + c * self.channel_stride
+            + d * self.depth_stride
+            + i * self.row_stride
+            + j * self.col_stride;
+        *self.data.get_unchecked_mut(flat_index) = value;
     }
     pub fn load_data(self: &mut Self, data: [Scalar; NUMEL]) -> () {
         self.data = data
