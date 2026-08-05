@@ -10,32 +10,32 @@ use ferrite::scalar::Scalar;
 #[test]
 //This is a compilation level test, test NOK = No compilation
 fn test_tensor_creation_and_shape() {
-    let _m = Tensor::<2, 3, 6>::new();
+    let _m = Tensor::<2, 3, 6>::new([0.0; 6]);
 }
 
 #[test]
 fn test_indexing() {
-    let m = Tensor::<2, 3, 6>::new();
+    let m = Tensor::<2, 3, 6>::new([0.0; 6]);
     println!("{}", m.get(0, 0))
 }
 
 #[test]
 #[should_panic]
 fn test_indexing_not_valid() {
-    let m = Tensor::<2, 3, 6>::new();
+    let m = Tensor::<2, 3, 6>::new([0.0; 6]);
     println!("{}", m.get(12, 2))
 }
 
 #[test]
 fn test_setting() {
-    let mut m = Tensor::<2, 3, 6>::new();
+    let mut m = Tensor::<2, 3, 6>::new([0.0; 6]);
     m.set(0, 0, 2.0);
     assert_eq!(2.0, m.get(0, 0))
 }
 
 #[test]
 fn test_transpose() {
-    let mut m = Tensor::<2, 3, 6>::new();
+    let mut m = Tensor::<2, 3, 6>::new([0.0; 6]);
     m.set(1, 2, 4.0);
     m.transpose();
     assert_eq!(4.0, m.get(2, 1));
@@ -46,9 +46,8 @@ fn test_transpose() {
 
 #[test]
 fn test_tensor_view() {
-    let mut m = Tensor::<3, 3, 9>::new();
     let data = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
-    m.load_data(data);
+    let m = Tensor::<3, 3, 9>::new(data);
     let m_view = m.view((1, 2), (1, 2));
     assert_eq!(5.0, m_view.get(0, 0));
     assert_eq!(6.0, m_view.get(0, 1));
@@ -59,9 +58,8 @@ fn test_tensor_view() {
 #[test]
 #[should_panic]
 fn test_view_indexing_not_valid() {
-    let mut m = Tensor::<3, 3, 9>::new();
     let data = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
-    m.load_data(data);
+    let m = Tensor::<3, 3, 9>::new(data);
     let m_view = m.view((1, 2), (1, 2));
     m_view.get(5, 5);
 }
@@ -69,14 +67,14 @@ fn test_view_indexing_not_valid() {
 #[should_panic]
 fn test_indexing_axis_overflow() {
     // 2 lignes, 3 colonnes : la colonne 3 sort de l'axe sans sortir du buffer
-    let m = Tensor::<2, 3, 6>::new();
+    let m = Tensor::<2, 3, 6>::new([0.0; 6]);
     m.get(0, 3);
 }
 
 #[test]
 #[should_panic]
 fn test_setting_axis_overflow() {
-    let mut m = Tensor::<2, 3, 6>::new();
+    let mut m = Tensor::<2, 3, 6>::new([0.0; 6]);
     m.set(0, 3, 1.0);
 }
 
@@ -84,7 +82,7 @@ fn test_setting_axis_overflow() {
 #[should_panic]
 fn test_indexing_axis_overflow_transposed() {
     // apres transpose la shape est (3, 2) : la colonne 2 sort de l'axe
-    let mut m = Tensor::<2, 3, 6>::new();
+    let mut m = Tensor::<2, 3, 6>::new([0.0; 6]);
     m.transpose();
     m.get(0, 2);
 }
@@ -93,10 +91,8 @@ fn test_indexing_axis_overflow_transposed() {
 fn test_tensordot() {
     // (2 x 3) . (2 x 3) -> (2 x 2) — b's contracted axis (3) is last, per the
     // shared tensordot_1/2/3 convention.
-    let mut a = Tensor::<2, 3, 6>::new();
-    a.load_data([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
-    let mut b = Tensor::<2, 3, 6>::new();
-    b.load_data([7.0, 9.0, 11.0, 8.0, 10.0, 12.0]);
+    let a = Tensor::<2, 3, 6>::new([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+    let b = Tensor::<2, 3, 6>::new([7.0, 9.0, 11.0, 8.0, 10.0, 12.0]);
 
     let c: Tensor<2, 2, 4> = tensordot_1(&a, &b);
     assert_eq!(58.0, c.get(0, 0));
@@ -107,10 +103,8 @@ fn test_tensordot() {
 
 #[test]
 fn test_tensordot_identity() {
-    let mut a = Tensor::<2, 2, 4>::new();
-    a.load_data([1.0, 2.0, 3.0, 4.0]);
-    let mut id = Tensor::<2, 2, 4>::new();
-    id.load_data([1.0, 0.0, 0.0, 1.0]);
+    let a = Tensor::<2, 2, 4>::new([1.0, 2.0, 3.0, 4.0]);
+    let id = Tensor::<2, 2, 4>::new([1.0, 0.0, 0.0, 1.0]);
 
     let c: Tensor<2, 2, 4> = tensordot_1(&a, &id);
     assert_eq!(1.0, c.get(0, 0));
@@ -122,10 +116,8 @@ fn test_tensordot_identity() {
 #[test]
 fn test_tensordot_non_square() {
     // (1 x 3) . (4 x 3) -> (1 x 4) — b's contracted axis (3) is last.
-    let mut a = Tensor::<1, 3, 3>::new();
-    a.load_data([1.0, 2.0, 3.0]);
-    let mut b = Tensor::<4, 3, 12>::new();
-    b.load_data([
+    let a = Tensor::<1, 3, 3>::new([1.0, 2.0, 3.0]);
+    let b = Tensor::<4, 3, 12>::new([
         1.0, 5.0, 9.0, 2.0, 6.0, 10.0, 3.0, 7.0, 11.0, 4.0, 8.0, 12.0,
     ]);
 
@@ -140,9 +132,9 @@ fn test_tensordot_non_square() {
 #[should_panic]
 fn test_tensordot_shape_out_of_sync_with_type() {
     // transpose ne change que la shape runtime : le type annonce toujours (2, 3)
-    let mut a = Tensor::<2, 3, 6>::new();
+    let mut a = Tensor::<2, 3, 6>::new([0.0; 6]);
     a.transpose();
-    let b = Tensor::<2, 3, 6>::new();
+    let b = Tensor::<2, 3, 6>::new([0.0; 6]);
     let _c: Tensor<2, 2, 4> = tensordot_1(&a, &b);
 }
 
@@ -150,10 +142,8 @@ fn test_tensordot_shape_out_of_sync_with_type() {
 fn test_tensordot_2() {
     // (2 x 2 x 2) . (3 x 2 x 2) -> (2 x 3) — b's contracted axes (2, 2) are
     // last, per the shared tensordot_1/2/3 convention.
-    let mut a = Tensor3D::<2, 2, 2, 8>::new();
-    a.load_data([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]);
-    let mut b = Tensor3D::<3, 2, 2, 12>::new();
-    b.load_data([
+    let a = Tensor3D::<2, 2, 2, 8>::new([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]);
+    let b = Tensor3D::<3, 2, 2, 12>::new([
         1.0, 4.0, 7.0, 10.0, 2.0, 5.0, 8.0, 11.0, 3.0, 6.0, 9.0, 12.0,
     ]);
 
@@ -177,16 +167,12 @@ fn test_tensordot_2_matches_flattened_tensordot_1() {
         1.0, 4.0, 7.0, 10.0, 2.0, 5.0, 8.0, 11.0, 3.0, 6.0, 9.0, 12.0,
     ];
 
-    let mut a3 = Tensor3D::<2, 2, 2, 8>::new();
-    a3.load_data(a_data);
-    let mut b3 = Tensor3D::<3, 2, 2, 12>::new();
-    b3.load_data(b_data);
+    let a3 = Tensor3D::<2, 2, 2, 8>::new(a_data);
+    let b3 = Tensor3D::<3, 2, 2, 12>::new(b_data);
     let c3: Tensor<2, 3, 6> = tensordot_2(&a3, &b3);
 
-    let mut a2 = Tensor::<2, 4, 8>::new();
-    a2.load_data(a_data);
-    let mut b2 = Tensor::<3, 4, 12>::new();
-    b2.load_data(b_data);
+    let a2 = Tensor::<2, 4, 8>::new(a_data);
+    let b2 = Tensor::<3, 4, 12>::new(b_data);
     let c2: Tensor<2, 3, 6> = tensordot_1(&a2, &b2);
 
     for i in 0..2 {
@@ -200,10 +186,8 @@ fn test_tensordot_2_matches_flattened_tensordot_1() {
 fn test_tensordot_2_single_inner_axis() {
     // K2 = 1 : la contraction sur deux axes degenere en produit matriciel.
     // b's contracted axes (3, 1) are last, per the shared convention.
-    let mut a = Tensor3D::<2, 3, 1, 6>::new();
-    a.load_data([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
-    let mut b = Tensor3D::<2, 3, 1, 6>::new();
-    b.load_data([7.0, 9.0, 11.0, 8.0, 10.0, 12.0]);
+    let a = Tensor3D::<2, 3, 1, 6>::new([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+    let b = Tensor3D::<2, 3, 1, 6>::new([7.0, 9.0, 11.0, 8.0, 10.0, 12.0]);
 
     let c: Tensor<2, 2, 4> = tensordot_2(&a, &b);
     assert_eq!(58.0, c.get(0, 0));
@@ -219,14 +203,12 @@ fn test_tensordot_3() {
     // matrice de Gram entre patchs et filtres, calculee a la main ci-dessous.
     // patch(0,0) = [1..8], patch(0,1) = [9..16]
     // filtre(0)  = [1..8], filtre(1)  = [9..16]
-    let mut a = Tensor6D::<1, 1, 2, 2, 2, 2, 16>::new();
-    let mut b = Tensor4D::<2, 2, 2, 2, 16>::new();
     let mut data = [0.0; 16];
     for k in 0..16 {
         data[k] = (k + 1) as Scalar;
     }
-    a.load_data(data);
-    b.load_data(data);
+    let a = Tensor6D::<1, 1, 2, 2, 2, 2, 16>::new(data);
+    let b = Tensor4D::<2, 2, 2, 2, 16>::new(data);
 
     let c: Tensor4D<1, 1, 2, 2, 4> = tensordot_3(&a, &b);
     // 1*1 + 2*2 + ... + 8*8 = 204
@@ -262,15 +244,12 @@ fn test_tensordot_3_matches_flattened_tensordot_1() {
         b_data[k] = (k + 1) as Scalar;
     }
 
-    let mut a6 = Tensor6D::<N, H_OUT, W_OUT, 2, 2, 1, 16>::new();
-    a6.load_data(a_data);
-    let mut b4 = Tensor4D::<K, 2, 2, 1, 12>::new();
-    b4.load_data(b_data);
+    let a6 = Tensor6D::<N, H_OUT, W_OUT, 2, 2, 1, 16>::new(a_data);
+    let b4 = Tensor4D::<K, 2, 2, 1, 12>::new(b_data);
     let c4: Tensor4D<N, H_OUT, W_OUT, K, 12> = tensordot_3(&a6, &b4);
 
-    let mut a2 = Tensor::<4, INNER, 16>::new();
-    a2.load_data(a_data);
-    let mut b2 = Tensor::<K, INNER, 12>::new();
+    let a2 = Tensor::<4, INNER, 16>::new(a_data);
+    let mut b2 = Tensor::<K, INNER, 12>::new([0.0; 12]);
     for k in 0..K {
         for c in 0..2 {
             for p in 0..2 {
@@ -296,10 +275,8 @@ fn test_tensordot_3_matches_flattened_tensordot_1() {
 fn test_tensordot_3_pointwise_filters() {
     // C = KH = KW = 1 : la contraction degenere en produit exterieur, chaque
     // pixel est simplement multiplie par chacun des K scalaires du filtre.
-    let mut a = Tensor6D::<2, 1, 2, 1, 1, 1, 4>::new();
-    a.load_data([1.0, 2.0, 3.0, 4.0]);
-    let mut b = Tensor4D::<3, 1, 1, 1, 3>::new();
-    b.load_data([5.0, 6.0, 7.0]);
+    let a = Tensor6D::<2, 1, 2, 1, 1, 1, 4>::new([1.0, 2.0, 3.0, 4.0]);
+    let b = Tensor4D::<3, 1, 1, 1, 3>::new([5.0, 6.0, 7.0]);
 
     let c: Tensor4D<2, 1, 2, 3, 12> = tensordot_3(&a, &b);
     for n in 0..2 {
@@ -316,14 +293,13 @@ fn test_tensordot_3_pointwise_filters() {
 
 #[test]
 fn test_tensor3d_creation_and_shape() {
-    let _m = Tensor3D::<2, 2, 2, 8>::new();
+    let _m = Tensor3D::<2, 2, 2, 8>::new([0.0; 8]);
 }
 
 #[test]
 fn test_indexing_tensore3d() {
-    let mut m = Tensor3D::<2, 2, 2, 8>::new();
     let data = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
-    m.load_data(data);
+    let m = Tensor3D::<2, 2, 2, 8>::new(data);
     assert_eq!(1.0, m.get(0, 0, 0));
     assert_eq!(2.0, m.get(0, 0, 1));
     assert_eq!(3.0, m.get(0, 1, 0));
@@ -337,29 +313,28 @@ fn test_indexing_tensore3d() {
 #[test]
 #[should_panic]
 fn test_indexing3d_not_valid() {
-    let m = Tensor3D::<2, 2, 2, 8>::new();
+    let m = Tensor3D::<2, 2, 2, 8>::new([0.0; 8]);
     m.get(12, 2, 0);
 }
 
 #[test]
 #[should_panic]
 fn test_indexing3d_axis_overflow() {
-    let m = Tensor3D::<2, 2, 2, 8>::new();
+    let m = Tensor3D::<2, 2, 2, 8>::new([0.0; 8]);
     m.get(0, 0, 2);
 }
 
 #[test]
 fn test_tensor4d_creation_and_shape() {
-    let _m = Tensor4D::<2, 2, 2, 2, 16>::new();
+    let _m = Tensor4D::<2, 2, 2, 2, 16>::new([0.0; 16]);
 }
 
 #[test]
 fn test_indexing_tensore4d() {
-    let mut m = Tensor4D::<2, 2, 2, 2, 16>::new();
     let data = [
         1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
     ];
-    m.load_data(data);
+    let m = Tensor4D::<2, 2, 2, 2, 16>::new(data);
     assert_eq!(1.0, m.get(0, 0, 0, 0));
     assert_eq!(16.0, m.get(1, 1, 1, 1));
     assert_eq!(8.0, m.get(0, 1, 1, 1));
@@ -368,23 +343,22 @@ fn test_indexing_tensore4d() {
 #[test]
 #[should_panic]
 fn test_indexing4d_axis_overflow() {
-    let m = Tensor4D::<2, 2, 2, 2, 16>::new();
+    let m = Tensor4D::<2, 2, 2, 2, 16>::new([0.0; 16]);
     m.get(0, 0, 0, 2);
 }
 
 #[test]
 fn test_tensor6d_creation_and_shape() {
-    let _m = Tensor6D::<2, 2, 2, 2, 2, 2, 64>::new();
+    let _m = Tensor6D::<2, 2, 2, 2, 2, 2, 64>::new([0.0; 64]);
 }
 
 #[test]
 fn test_indexing_tensore6d() {
-    let mut m = Tensor6D::<2, 2, 2, 2, 2, 2, 64>::new();
     let mut data = [0.0; 64];
     for k in 0..64 {
         data[k] = (k + 1) as Scalar;
     }
-    m.load_data(data);
+    let m = Tensor6D::<2, 2, 2, 2, 2, 2, 64>::new(data);
     assert_eq!(1.0, m.get(0, 0, 0, 0, 0, 0));
     assert_eq!(2.0, m.get(0, 0, 0, 0, 0, 1));
     assert_eq!(3.0, m.get(0, 0, 0, 0, 1, 0));
@@ -397,7 +371,7 @@ fn test_indexing_tensore6d() {
 
 #[test]
 fn test_setting_tensor6d() {
-    let mut m = Tensor6D::<2, 2, 2, 2, 2, 2, 64>::new();
+    let mut m = Tensor6D::<2, 2, 2, 2, 2, 2, 64>::new([0.0; 64]);
     m.set(1, 0, 1, 0, 1, 0, 42.0);
     assert_eq!(42.0, m.get(1, 0, 1, 0, 1, 0));
     assert_eq!(0.0, m.get(1, 0, 1, 0, 1, 1));
@@ -406,29 +380,28 @@ fn test_setting_tensor6d() {
 #[test]
 #[should_panic]
 fn test_indexing6d_not_valid() {
-    let m = Tensor6D::<2, 2, 2, 2, 2, 2, 64>::new();
+    let m = Tensor6D::<2, 2, 2, 2, 2, 2, 64>::new([0.0; 64]);
     m.get(12, 0, 0, 0, 0, 0);
 }
 
 #[test]
 #[should_panic]
 fn test_indexing6d_axis_overflow() {
-    let m = Tensor6D::<2, 2, 2, 2, 2, 2, 64>::new();
+    let m = Tensor6D::<2, 2, 2, 2, 2, 2, 64>::new([0.0; 64]);
     m.get(0, 0, 0, 0, 0, 2);
 }
 
 #[test]
 #[should_panic]
 fn test_setting6d_axis_overflow() {
-    let mut m = Tensor6D::<2, 2, 2, 2, 2, 2, 64>::new();
+    let mut m = Tensor6D::<2, 2, 2, 2, 2, 2, 64>::new([0.0; 64]);
     m.set(0, 0, 0, 0, 2, 0, 1.0);
 }
 
 #[test]
 fn test_im2col_view_full_window() {
     // KH x KW = H x W : une seule position, la vue redonne le tenseur d'entree
-    let mut m = Tensor4D::<1, 1, 2, 2, 4>::new();
-    m.load_data([1.0, 2.0, 3.0, 4.0]);
+    let m = Tensor4D::<1, 1, 2, 2, 4>::new([1.0, 2.0, 3.0, 4.0]);
 
     let v = m.im2col_view::<1, 1, 2, 2>(1);
     for p in 0..2 {
@@ -444,8 +417,7 @@ fn test_im2col_view_sliding_window() {
     // 1 2 3
     // 4 5 6
     // 7 8 9
-    let mut m = Tensor4D::<1, 1, 3, 3, 9>::new();
-    m.load_data([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]);
+    let m = Tensor4D::<1, 1, 3, 3, 9>::new([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]);
 
     let v = m.im2col_view::<2, 2, 2, 2>(1);
     // patch (0, 0) = [[1, 2], [4, 5]]
@@ -476,12 +448,11 @@ fn test_im2col_view_stride_2() {
     //  5  6  7  8
     //  9 10 11 12
     // 13 14 15 16
-    let mut m = Tensor4D::<1, 1, 4, 4, 16>::new();
     let mut data = [0.0; 16];
     for k in 0..16 {
         data[k] = (k + 1) as Scalar;
     }
-    m.load_data(data);
+    let m = Tensor4D::<1, 1, 4, 4, 16>::new(data);
 
     let v = m.im2col_view::<2, 2, 2, 2>(2);
     assert_eq!(1.0, v.get(0, 0, 0, 0, 0, 0));
@@ -505,12 +476,11 @@ fn test_im2col_view_strides_invariant() {
     const KH: usize = 2;
     const KW: usize = 3;
 
-    let mut m = Tensor4D::<N, C, H, W, 64>::new();
     let mut data = [0.0; 64];
     for k in 0..64 {
         data[k] = (k + 1) as Scalar;
     }
-    m.load_data(data);
+    let m = Tensor4D::<N, C, H, W, 64>::new(data);
 
     // stride 1 : H_OUT = 3, W_OUT = 2
     let v = m.im2col_view::<3, 2, KH, KW>(1);
@@ -547,28 +517,28 @@ fn test_im2col_view_strides_invariant() {
 #[should_panic]
 fn test_im2col_view_wrong_output_size() {
     // 3x3 avec une fenetre 2x2 et stride 1 donne 2x2, pas 3x3
-    let m = Tensor4D::<1, 1, 3, 3, 9>::new();
+    let m = Tensor4D::<1, 1, 3, 3, 9>::new([0.0; 9]);
     let _v = m.im2col_view::<3, 3, 2, 2>(1);
 }
 
 #[test]
 #[should_panic]
 fn test_im2col_view_kernel_larger_than_input() {
-    let m = Tensor4D::<1, 1, 2, 2, 4>::new();
+    let m = Tensor4D::<1, 1, 2, 2, 4>::new([0.0; 4]);
     let _v = m.im2col_view::<1, 1, 3, 3>(1);
 }
 
 #[test]
 #[should_panic]
 fn test_im2col_view_null_stride() {
-    let m = Tensor4D::<1, 1, 3, 3, 9>::new();
+    let m = Tensor4D::<1, 1, 3, 3, 9>::new([0.0; 9]);
     let _v = m.im2col_view::<3, 3, 1, 1>(0);
 }
 
 #[test]
 #[should_panic]
 fn test_im2col_view_axis_overflow() {
-    let m = Tensor4D::<1, 1, 3, 3, 9>::new();
+    let m = Tensor4D::<1, 1, 3, 3, 9>::new([0.0; 9]);
     let v = m.im2col_view::<2, 2, 2, 2>(1);
     // W_OUT vaut 2 : la troisieme position de fenetre n'existe pas
     v.get(0, 0, 2, 0, 0, 0);
@@ -580,13 +550,11 @@ fn test_im2col_view_feeds_tensordot_3() {
     // 1 2 3
     // 4 5 6
     // 7 8 9
-    let mut m = Tensor4D::<1, 1, 3, 3, 9>::new();
-    m.load_data([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]);
+    let m = Tensor4D::<1, 1, 3, 3, 9>::new([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]);
     let v = m.im2col_view::<2, 2, 2, 2>(1);
 
     // filtre 0 : diagonale (a + d), filtre 1 : somme du patch
-    let mut filters = Tensor4D::<2, 1, 2, 2, 8>::new();
-    filters.load_data([1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
+    let filters = Tensor4D::<2, 1, 2, 2, 8>::new([1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
 
     // la vue est contractee telle quelle : aucun tenseur de patchs intermediaire
     let out: Tensor4D<1, 2, 2, 2, 8> = tensordot_3(&v, &filters);
@@ -614,22 +582,20 @@ fn test_tensordot_3_view_matches_materialised() {
     const KW: usize = 2;
     const K: usize = 3;
 
-    let mut m = Tensor4D::<N, C, 3, 3, 36>::new();
     let mut data = [0.0; 36];
     for k in 0..36 {
         data[k] = (k + 1) as Scalar;
     }
-    m.load_data(data);
+    let m = Tensor4D::<N, C, 3, 3, 36>::new(data);
     let v = m.im2col_view::<H_OUT, W_OUT, KH, KW>(1);
 
-    let mut filters = Tensor4D::<K, C, KH, KW, 24>::new();
     let mut filter_data = [0.0; 24];
     for k in 0..24 {
         filter_data[k] = (k % 5) as Scalar - 2.0;
     }
-    filters.load_data(filter_data);
+    let filters = Tensor4D::<K, C, KH, KW, 24>::new(filter_data);
 
-    let mut patches = Tensor6D::<N, H_OUT, W_OUT, C, KH, KW, 64>::new();
+    let mut patches = Tensor6D::<N, H_OUT, W_OUT, C, KH, KW, 64>::new([0.0; 64]);
     for n in 0..N {
         for i in 0..H_OUT {
             for j in 0..W_OUT {
@@ -687,17 +653,13 @@ fn test_storage_agnostic_cross_correlation() {
         *v = ((i % 7) as Scalar) - 2.0;
     }
 
-    let mut vid_stack = Tensor4D::<N, C, H, W, NUMEL_X>::new();
-    let mut fil_stack = Tensor4D::<K, C, 3, 3, NUMEL_F>::new();
-    vid_stack.load_data(video);
-    fil_stack.load_data(filters);
+    let vid_stack = Tensor4D::<N, C, H, W, NUMEL_X>::new(video);
+    let fil_stack = Tensor4D::<K, C, 3, 3, NUMEL_F>::new(filters);
     let on_stack: Tensor4D<N, H_OUT, W_OUT, K, NUMEL_Y> =
         tensordot_3(&vid_stack.im2col_view::<H_OUT, W_OUT, 3, 3>(1), &fil_stack);
 
-    let mut vid_heap = Tensor4DBoxed::<N, C, H, W, NUMEL_X>::new();
-    let mut fil_heap = Tensor4DBoxed::<K, C, 3, 3, NUMEL_F>::new();
-    vid_heap.load_vec(video.to_vec()).unwrap();
-    fil_heap.load_vec(filters.to_vec()).unwrap();
+    let vid_heap = Tensor4DBoxed::<N, C, H, W, NUMEL_X>::from_vec(video.to_vec()).unwrap();
+    let fil_heap = Tensor4DBoxed::<K, C, 3, 3, NUMEL_F>::from_vec(filters.to_vec()).unwrap();
     let on_heap: Tensor4DBoxed<N, H_OUT, W_OUT, K, NUMEL_Y> =
         tensordot_3(&vid_heap.im2col_view::<H_OUT, W_OUT, 3, 3>(1), &fil_heap);
 
@@ -715,13 +677,10 @@ fn test_storage_agnostic_cross_correlation() {
 fn test_mixed_storage_operands() {
     use ferrite::linalg::Tensor4DBoxed;
 
-    let mut vid_heap = Tensor4DBoxed::<1, 1, 4, 4, 16>::new();
-    vid_heap
-        .load_vec((0..16).map(|i| i as Scalar).collect())
-        .unwrap();
+    let vid_heap =
+        Tensor4DBoxed::<1, 1, 4, 4, 16>::from_vec((0..16).map(|i| i as Scalar).collect()).unwrap();
 
-    let mut fil_stack = Tensor4D::<1, 1, 2, 2, 4>::new();
-    fil_stack.load_data([1.0, 1.0, 1.0, 1.0]);
+    let fil_stack = Tensor4D::<1, 1, 2, 2, 4>::new([1.0, 1.0, 1.0, 1.0]);
 
     let out: Tensor4D<1, 3, 3, 1, 9> =
         tensordot_3(&vid_heap.im2col_view::<3, 3, 2, 2>(1), &fil_stack);
@@ -734,14 +693,14 @@ fn test_mixed_storage_operands() {
 
 #[test]
 fn test_tensor_rows_cols() {
-    let m = Tensor::<2, 3, 6>::new();
+    let m = Tensor::<2, 3, 6>::new([0.0; 6]);
     assert_eq!(m.rows(), 2);
     assert_eq!(m.cols(), 3);
 }
 
 #[test]
 fn test_tensor_index_get_set() {
-    let mut m = Tensor::<2, 2, 4>::new();
+    let mut m = Tensor::<2, 2, 4>::new([0.0; 4]);
     m[(0, 1)] = 42.0;
     assert_eq!(m[(0, 1)], 42.0);
     assert_eq!(m[(1, 1)], 0.0);
@@ -750,18 +709,18 @@ fn test_tensor_index_get_set() {
 #[test]
 #[should_panic]
 fn test_tensor_index_out_of_bounds() {
-    let m = Tensor::<2, 2, 4>::new();
+    let m = Tensor::<2, 2, 4>::new([0.0; 4]);
     let _ = m[(2, 0)];
 }
 
 #[test]
 fn test_tensor_addition() {
-    let mut m1 = Tensor::<2, 2, 4>::new();
+    let mut m1 = Tensor::<2, 2, 4>::new([0.0; 4]);
     m1[(0, 0)] = 1.0;
-    let mut m2 = Tensor::<2, 2, 4>::new();
+    let mut m2 = Tensor::<2, 2, 4>::new([0.0; 4]);
     m2[(0, 0)] = 2.0;
     assert_eq!(m1 + m2, {
-        let mut res = Tensor::<2, 2, 4>::new();
+        let mut res = Tensor::<2, 2, 4>::new([0.0; 4]);
         res[(0, 0)] = 3.0;
         res
     });
@@ -769,12 +728,12 @@ fn test_tensor_addition() {
 
 #[test]
 fn test_tensor_multiply() {
-    let mut m1 = Tensor::<2, 2, 4>::new();
+    let mut m1 = Tensor::<2, 2, 4>::new([0.0; 4]);
     m1[(0, 0)] = 1.0;
     m1[(0, 1)] = 2.0;
     m1[(1, 0)] = 3.0;
     m1[(1, 1)] = 4.0;
-    let mut m2 = Tensor::<2, 1, 2>::new();
+    let mut m2 = Tensor::<2, 1, 2>::new([0.0; 2]);
     m2[(0, 0)] = 5.0;
     m2[(1, 0)] = 6.0;
     let res: Tensor<2, 1, 2> = m1.multiply(&m2);
@@ -784,7 +743,7 @@ fn test_tensor_multiply() {
 
 #[test]
 fn test_tensor_matmul_accumulate() {
-    let mut res = Tensor::<1, 1, 1>::new();
+    let mut res = Tensor::<1, 1, 1>::new([0.0; 1]);
     res[(0, 0)] = 10.0;
     let m1 = Tensor::<1, 1, 1>::identity();
     let m2 = Tensor::<1, 1, 1>::identity();
@@ -794,7 +753,7 @@ fn test_tensor_matmul_accumulate() {
 
 #[test]
 fn test_tensor_transposed() {
-    let mut m = Tensor::<1, 2, 2>::new();
+    let mut m = Tensor::<1, 2, 2>::new([0.0; 2]);
     m[(0, 0)] = 1.0;
     m[(0, 1)] = 2.0;
     let t = m.transposed();
@@ -805,7 +764,7 @@ fn test_tensor_transposed() {
 
 #[test]
 fn test_tensor_col_extraction() {
-    let mut m = Tensor::<2, 2, 4>::new();
+    let mut m = Tensor::<2, 2, 4>::new([0.0; 4]);
     m[(0, 1)] = 5.0;
     m[(1, 1)] = 10.0;
     let col = m.get_col(1).unwrap();

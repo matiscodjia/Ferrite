@@ -1,5 +1,5 @@
 use super::tensor6d::TensorView6D;
-use crate::linalg::storage::{Buffer, OwnedStorage, StackStorage, Storage};
+use crate::linalg::storage::{Buffer, LenMismatch, OwnedStorage, StackStorage, Storage};
 use crate::scalar::Scalar;
 
 /// `S` détermine où vit le buffer — pile par défaut, donc les instanciations
@@ -50,7 +50,12 @@ impl<
 {
     const STRUCTURE_CORRECTNESS: () = assert!(NUMEL == BATCHES * CHANNELS * ROWS * COLS);
 
-    pub fn new() -> Self
+    /// Zero-initialized accumulator for the crate's own algorithms
+    /// (`tensordot_3`, `sp::kernels::filter_bank`), which build a result
+    /// element by element. Kept out of the public API on purpose: an external
+    /// caller should never get a silently-zeroed tensor by omitting a load
+    /// step.
+    pub(crate) fn zeroed() -> Self
     where
         S: OwnedStorage<[Scalar; NUMEL]>,
     {
@@ -63,6 +68,37 @@ impl<
             col_stride: 1,
             shape: [BATCHES, CHANNELS, ROWS, COLS],
         }
+    }
+    /// Builds a tensor from data known upfront — the caller never needs `mut`
+    /// or a separate load step.
+    pub fn new(data: [Scalar; NUMEL]) -> Self
+    where
+        S: OwnedStorage<[Scalar; NUMEL]>,
+    {
+        let mut t = Self::zeroed();
+        t.load_data(data);
+        t
+    }
+    /// Copies from a runtime-sized slice — never materializes `[Scalar; NUMEL]`
+    /// on the stack, so it's the door for a large tensor without `alloc`.
+    pub fn load_slice(self: &mut Self, data: &[Scalar]) -> Result<(), LenMismatch> {
+        if data.len() != NUMEL {
+            return Err(LenMismatch);
+        }
+        self.data.as_flat_mut().copy_from_slice(data);
+        Ok(())
+    }
+    /// Builds a tensor straight from a `Vec` in one step — the `.npy`
+    /// pipeline's door, without the caller needing a `mut` local for the
+    /// zeroed()+load_vec() two-step.
+    #[cfg(feature = "alloc")]
+    pub fn from_vec(data: alloc::vec::Vec<Scalar>) -> Result<Self, alloc::vec::Vec<Scalar>>
+    where
+        S: OwnedStorage<[Scalar; NUMEL]>,
+    {
+        let mut t = Self::zeroed();
+        t.load_vec(data)?;
+        Ok(t)
     }
     pub fn get_data(&self) -> &[Scalar] {
         self.data.as_flat()

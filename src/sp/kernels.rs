@@ -23,7 +23,7 @@ fn replicate<const C: usize, const NUMEL: usize>(
     taps: &Taps3x3,
     gain: Scalar,
 ) -> Tensor3D<C, 3, 3, NUMEL> {
-    let mut kernel = Tensor3D::<C, 3, 3, NUMEL>::new();
+    let mut kernel = Tensor3D::<C, 3, 3, NUMEL>::zeroed();
     for c in 0..C {
         for i in 0..3 {
             for j in 0..3 {
@@ -94,7 +94,7 @@ pub fn filter_bank<
 >(
     kernels: [&Tensor3D<C, KH, KW, NUMEL_KERNEL>; K],
 ) -> Tensor4D<K, C, KH, KW, NUMEL_BANK> {
-    let mut bank = Tensor4D::<K, C, KH, KW, NUMEL_BANK>::new();
+    let mut bank = Tensor4D::<K, C, KH, KW, NUMEL_BANK>::zeroed();
     for k in 0..K {
         for c in 0..C {
             for i in 0..KH {

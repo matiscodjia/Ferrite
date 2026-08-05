@@ -81,6 +81,10 @@ pub trait OwnedStorage<B: Buffer>: Storage<B> {
     fn zeroed() -> Self;
 }
 
+/// Erreur de `load_slice` : la longueur fournie ne correspond pas à `NUMEL`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LenMismatch;
+
 /// Le buffer vit inline dans la structure, donc sur la pile si la valeur est
 /// possédée. Aucune dépendance à `alloc` : c'est le stockage de la cible edge,
 /// et le défaut de tous les conteneurs.

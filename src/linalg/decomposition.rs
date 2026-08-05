@@ -60,7 +60,7 @@ pub fn qr_decomposition<
 
     // 4. Calculate R = Q^T * mat
     // Resulting R is N x N
-    let mut r = Tensor::<N, N, NUMEL_NN>::new();
+    let mut r = Tensor::<N, N, NUMEL_NN>::zeroed();
     r.matmul_accumulate(&q.transposed(), mat);
 
     (q, r)
@@ -185,7 +185,7 @@ pub fn svd_2x2(mat: &Tensor<2, 2, 4>) -> (Tensor<2, 2, 4>, Vector<2>, Tensor<2, 
     };
 
     let u: Tensor<2, 2, 4> = Tensor::from_cols([u1, u2]);
-    let mut v = Tensor::<2, 2, 4>::new();
+    let mut v = Tensor::<2, 2, 4>::zeroed();
     v[(0, 0)] = cos;
     v[(0, 1)] = sin;
     v[(1, 0)] = -sin;
@@ -241,7 +241,7 @@ pub fn svd<const M: usize, const N: usize, const NUMEL_MN: usize, const NUMEL_NN
     }
 
     let mut sigma = Vector::<N>::from_data([0.0; N]);
-    let mut u = Tensor::<M, N, NUMEL_MN>::new();
+    let mut u = Tensor::<M, N, NUMEL_MN>::zeroed();
 
     for i in 0..N {
         let col = b.get_col(i).unwrap();

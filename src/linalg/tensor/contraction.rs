@@ -24,7 +24,7 @@ pub fn tensordot_1<
     b: &Tensor<N, K, NUMEL_B>,
 ) -> Tensor<M, N, NUMEL_C> {
     assert!(a.shape == (M, K) && b.shape == (N, K));
-    let mut c = Tensor::<M, N, NUMEL_C>::new();
+    let mut c = Tensor::<M, N, NUMEL_C>::zeroed();
     for i in 0..M {
         // SAFETY: i < M is guaranteed by the enclosing for loop's bounds.
         let a_base = unsafe { a.row_offset(i) };
@@ -71,7 +71,7 @@ pub fn tensordot_2<
     b: &Tensor3D<N, K1, K2, NUMEL_B>,
 ) -> Tensor<M, N, NUMEL_C> {
     assert!(a.shape == [M, K1, K2] && b.shape == [N, K1, K2]);
-    let mut c = Tensor::<M, N, NUMEL_C>::new();
+    let mut c = Tensor::<M, N, NUMEL_C>::zeroed();
     for i in 0..M {
         for j in 0..N {
             let mut sum: Scalar = 0.0;
@@ -135,7 +135,7 @@ where
     SC: OwnedStorage<[Scalar; NUMEL_C]>,
 {
     assert!(a.shape() == [N, H_OUT, W_OUT, C, KH, KW] && b.shape == [K, C, KH, KW]);
-    let mut c = Tensor4D::<N, H_OUT, W_OUT, K, NUMEL_C, SC>::new();
+    let mut c = Tensor4D::<N, H_OUT, W_OUT, K, NUMEL_C, SC>::zeroed();
     for n in 0..N {
         for i in 0..H_OUT {
             for j in 0..W_OUT {

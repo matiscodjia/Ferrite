@@ -1,3 +1,4 @@
+use crate::linalg::storage::{Buffer, LenMismatch, OwnedStorage, StackStorage, Storage};
 use crate::scalar::Scalar;
 
 /// Read-only access to a rank-6 tensor, whichever way it holds its elements:
@@ -56,8 +57,9 @@ impl<
         const ROWS: usize,
         const COLS: usize,
         const NUMEL: usize,
+        S: Storage<[Scalar; NUMEL]>,
     > Rank6<BATCHES, GROUPS, CHANNELS, DEPTH, ROWS, COLS>
-    for Tensor6D<BATCHES, GROUPS, CHANNELS, DEPTH, ROWS, COLS, NUMEL>
+    for Tensor6D<BATCHES, GROUPS, CHANNELS, DEPTH, ROWS, COLS, NUMEL, S>
 {
     fn get(self: &Self, b: usize, g: usize, c: usize, d: usize, i: usize, j: usize) -> Scalar {
         Tensor6D::get(self, b, g, c, d, i, j)
@@ -74,7 +76,7 @@ impl<
         Tensor6D::get_unchecked(self, b, g, c, d, i, j)
     }
     fn get_raw_buffer(self: &Self) -> &[Scalar] {
-        &self.data
+        self.data.as_flat()
     }
     unsafe fn row_offset(self: &Self, b: usize, g: usize, c: usize, d: usize, i: usize) -> usize {
         b * self.batch_stride
@@ -235,8 +237,9 @@ pub struct Tensor6D<
     const ROWS: usize,
     const COLS: usize,
     const NUMEL: usize,
+    S: Storage<[Scalar; NUMEL]> = StackStorage<[Scalar; NUMEL]>,
 > {
-    data: [Scalar; NUMEL],
+    data: S,
     batch_stride: usize,
     group_stride: usize,
     channel_stride: usize,
@@ -254,15 +257,22 @@ impl<
         const ROWS: usize,
         const COLS: usize,
         const NUMEL: usize,
-    > Tensor6D<BATCHES, GROUPS, CHANNELS, DEPTH, ROWS, COLS, NUMEL>
+        S: Storage<[Scalar; NUMEL]>,
+    > Tensor6D<BATCHES, GROUPS, CHANNELS, DEPTH, ROWS, COLS, NUMEL, S>
 {
     const STRUCTURE_CORRECTNESS: () =
         assert!(NUMEL == BATCHES * GROUPS * CHANNELS * DEPTH * ROWS * COLS);
 
-    pub fn new() -> Self {
+    /// Zero-initialized accumulator for the crate's own algorithms. Kept out
+    /// of the public API on purpose: an external caller should never get a
+    /// silently-zeroed tensor by omitting a load step.
+    pub(crate) fn zeroed() -> Self
+    where
+        S: OwnedStorage<[Scalar; NUMEL]>,
+    {
         let _ = Self::STRUCTURE_CORRECTNESS;
         Self {
-            data: [0.0; NUMEL],
+            data: S::zeroed(),
             batch_stride: GROUPS * CHANNELS * DEPTH * ROWS * COLS,
             group_stride: CHANNELS * DEPTH * ROWS * COLS,
             channel_stride: DEPTH * ROWS * COLS,
@@ -271,6 +281,16 @@ impl<
             col_stride: 1,
             shape: [BATCHES, GROUPS, CHANNELS, DEPTH, ROWS, COLS],
         }
+    }
+    /// Builds a tensor from data known upfront — the caller never needs `mut`
+    /// or a separate load step.
+    pub fn new(data: [Scalar; NUMEL]) -> Self
+    where
+        S: OwnedStorage<[Scalar; NUMEL]>,
+    {
+        let mut t = Self::zeroed();
+        t.load_data(data);
+        t
     }
     pub fn get(self: &Self, b: usize, g: usize, c: usize, d: usize, i: usize, j: usize) -> Scalar {
         debug_assert!(
@@ -356,7 +376,33 @@ impl<
             + j * self.col_stride;
         *self.data.get_unchecked_mut(flat_index) = value;
     }
+    /// Loads a full, statically-sized buffer — for small tensors and known
+    /// data. For a tensor too big to build `[Scalar; NUMEL]` on the stack, see
+    /// [`Self::load_slice`] (`no_std`, no `alloc`) or [`Self::from_vec`].
     pub fn load_data(self: &mut Self, data: [Scalar; NUMEL]) -> () {
-        self.data = data
+        self.data.as_flat_mut().copy_from_slice(&data);
+    }
+    /// Copies from a runtime-sized slice — never materializes `[Scalar; NUMEL]`
+    /// on the stack.
+    pub fn load_slice(self: &mut Self, data: &[Scalar]) -> Result<(), LenMismatch> {
+        if data.len() != NUMEL {
+            return Err(LenMismatch);
+        }
+        self.data.as_flat_mut().copy_from_slice(data);
+        Ok(())
+    }
+    /// Builds a tensor straight from a `Vec` — no compile-time-sized array
+    /// ever materialized.
+    #[cfg(feature = "alloc")]
+    pub fn from_vec(data: alloc::vec::Vec<Scalar>) -> Result<Self, alloc::vec::Vec<Scalar>>
+    where
+        S: OwnedStorage<[Scalar; NUMEL]>,
+    {
+        if data.len() != NUMEL {
+            return Err(data);
+        }
+        let mut t = Self::zeroed();
+        t.data.as_flat_mut().copy_from_slice(&data);
+        Ok(t)
     }
 }
