@@ -14,7 +14,7 @@ use ferrite::Scalar;
 fn test_integration_vector_tensor() {
     let v = Vector::from_data([1.0, 2.0]);
     assert_eq!(v.dim(), 2);
-    let m = Tensor::<2, 2, 4>::new();
+    let m = Tensor::<2, 2, 4>::new([0.0; 4]);
     assert_eq!(m.rows(), 2);
 }
 

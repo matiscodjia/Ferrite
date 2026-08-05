@@ -22,9 +22,8 @@ fn bench_for_k<const K: usize, const NUMEL_BANK: usize, const NUMEL_OUT: usize>(
 }
 
 fn bench_tensordot(c: &mut Criterion) {
-    let mut tensor = Tensor4D::<1, 3, 128, 128, 49152>::new();
     let data = (0..49152).map(|x| x as f32).collect();
-    tensor.load_vec(data).unwrap();
+    let tensor = Tensor4D::<1, 3, 128, 128, 49152>::from_vec(data).unwrap();
     // canaux du filtre = canaux du tenseur (3) : filter_bank exige un kernel
     // qui couvre toute la profondeur d'entrée, pas seulement 1 canal.
     let filter: Tensor3D<3, 3, 3, 27> = Gaussian3D::kernel();

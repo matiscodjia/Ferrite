@@ -1,9 +1,51 @@
 use crate::io::npy::{read_npy, write_npy, NpyArray};
 use crate::linalg::{tensordot_3, Tensor4DBoxed};
+use crate::scalar::Scalar;
 use std::fs::{self, DirEntry};
 use std::path::Path;
 use std::string::{String, ToString};
 use std::vec::Vec;
+
+/// Extracts one row of `frame` from an (N, C, H, W) npy array as grayscale,
+/// via the standard luminance formula (0.299 R + 0.587 G + 0.114 B) when
+/// `C == 3`, or a straight copy when `C == 1`. Reads only the `W` pixels of
+/// that row from each channel plane — never materialises a whole grayscale
+/// frame, so a caller streaming rows into `ConvStreaming` pays no extra
+/// memory for the conversion.
+///
+/// # Panics
+/// Panics if `arr.shape` isn't 4-dimensional, `frame`/`row` are out of
+/// range, the array's width doesn't match `W`, or `C` isn't 1 or 3.
+pub fn grayscale_row<const W: usize>(arr: &NpyArray, frame: usize, row: usize) -> [Scalar; W] {
+    assert_eq!(arr.shape.len(), 4, "expected an (N, C, H, W) array");
+    let (n, c, h, w) = (arr.shape[0], arr.shape[1], arr.shape[2], arr.shape[3]);
+    assert!(frame < n && row < h && w == W);
+    assert!(
+        c == 1 || c == 3,
+        "expected 1 (grayscale) or 3 (RGB) channels, got {c}"
+    );
+
+    let plane = h * w;
+    let frame_base = frame * c * plane;
+    let row_base = row * w;
+
+    let mut out = [0.0; W];
+    if c == 1 {
+        for x in 0..W {
+            out[x] = arr.data[frame_base + row_base + x] as Scalar;
+        }
+    } else {
+        let (r_base, g_base, b_base) = (frame_base, frame_base + plane, frame_base + 2 * plane);
+        for x in 0..W {
+            let r = arr.data[r_base + row_base + x];
+            let g = arr.data[g_base + row_base + x];
+            let b = arr.data[b_base + row_base + x];
+            out[x] = (0.299 * r + 0.587 * g + 0.114 * b) as Scalar;
+        }
+    }
+    out
+}
+
 pub fn read_files(path: &str) -> std::io::Result<Vec<DirEntry>> {
     let mut files_path = Vec::new();
     for entree in fs::read_dir(path)? {
@@ -70,13 +112,9 @@ macro_rules! bench_case {
         output: [$h_out:literal, $w_out:literal] = $numel_y:literal,
         stride: $stride:literal $(,)?
     ) => {{
-        let mut vid_tensor = Tensor4DBoxed::<$n, $c, $h, $w, $numel_x>::new();
-        let mut fil_tensor = Tensor4DBoxed::<$k, $c, $kh, $kw, $numel_f>::new();
-        vid_tensor
-            .load_vec($vid.data)
+        let vid_tensor = Tensor4DBoxed::<$n, $c, $h, $w, $numel_x>::from_vec($vid.data)
             .unwrap_or_else(|_| panic!("video dimensions unexpected"));
-        fil_tensor
-            .load_vec($fil.data)
+        let fil_tensor = Tensor4DBoxed::<$k, $c, $kh, $kw, $numel_f>::from_vec($fil.data)
             .unwrap_or_else(|_| panic!("filter dimensions unexpected"));
 
         let result: Tensor4DBoxed<$n, $h_out, $w_out, $k, $numel_y> = tensordot_3(

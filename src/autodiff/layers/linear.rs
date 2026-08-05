@@ -15,7 +15,7 @@ pub struct Linear<const IN: usize, const OUT: usize, const NUMEL: usize> {
 impl<const IN: usize, const OUT: usize, const NUMEL: usize> Linear<IN, OUT, NUMEL> {
     pub fn zeros() -> Self {
         Linear {
-            weights: Tensor::new(),
+            weights: Tensor::zeroed(),
             bias: Vector::from_data([0.0; OUT]),
         }
     }
@@ -27,7 +27,7 @@ impl<const IN: usize, const OUT: usize, const NUMEL: usize> Linear<IN, OUT, NUME
     pub fn from_seed(seed: u64) -> Self {
         let mut state = if seed == 0 { 1 } else { seed };
         let limit = sqrt(6.0 / (IN + OUT) as Scalar);
-        let mut weights = Tensor::<OUT, IN, NUMEL>::new();
+        let mut weights = Tensor::<OUT, IN, NUMEL>::zeroed();
         for i in 0..OUT {
             for j in 0..IN {
                 weights[(i, j)] = xorshift_scalar(&mut state) * limit;
@@ -77,7 +77,7 @@ impl<const IN: usize, const OUT: usize, const NUMEL: usize> Module<Vector<IN>>
     ) -> (Vector<IN>, Self::Gradients) {
         let x = ctx;
         let data_grad = self.weights.transposed().multiply(&grad_out);
-        let mut weights_grads = Tensor::<OUT, IN, NUMEL>::new();
+        let mut weights_grads = Tensor::<OUT, IN, NUMEL>::zeroed();
         for i in 0..OUT {
             for j in 0..IN {
                 weights_grads[(i, j)] = grad_out[i] * x[j];

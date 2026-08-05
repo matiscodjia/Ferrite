@@ -1,10 +1,16 @@
+use crate::linalg::storage::{Buffer, LenMismatch, OwnedStorage, StackStorage, Storage};
 use crate::scalar::{fabs, sqrt, Scalar};
 use core::ops::{Add, Div, Index, IndexMut, Mul, Neg, Sub};
 
 #[derive(Clone, Copy, Debug)]
 #[allow(unused_variables)]
-pub struct Tensor<const ROWS: usize, const COLS: usize, const NUMEL: usize> {
-    data: [Scalar; NUMEL],
+pub struct Tensor<
+    const ROWS: usize,
+    const COLS: usize,
+    const NUMEL: usize,
+    S: Storage<[Scalar; NUMEL]> = StackStorage<[Scalar; NUMEL]>,
+> {
+    data: S,
     row_stride: usize,
     col_stride: usize,
     pub(super) shape: (usize, usize),
@@ -26,17 +32,37 @@ impl<'a> TensorView<'a> {
     }
 }
 
-impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> Tensor<ROWS, COLS, NUMEL> {
+impl<const ROWS: usize, const COLS: usize, const NUMEL: usize, S: Storage<[Scalar; NUMEL]>>
+    Tensor<ROWS, COLS, NUMEL, S>
+{
     const STRUCTURE_CORRECTNESS: () = assert!(NUMEL == ROWS * COLS);
 
-    pub fn new() -> Self {
+    /// Zero-initialized accumulator for the crate's own algorithms (`identity`,
+    /// `multiply`, `qr_decomposition`, `tensordot_*`...), which build a result
+    /// element by element and can't hand `new` the full data upfront. Kept out
+    /// of the public API on purpose: an external caller of the crate should
+    /// never be able to get a silently-zeroed tensor by omitting a load step.
+    pub(crate) fn zeroed() -> Self
+    where
+        S: OwnedStorage<[Scalar; NUMEL]>,
+    {
         let _ = Self::STRUCTURE_CORRECTNESS;
         Self {
-            data: [0.0; NUMEL],
+            data: S::zeroed(),
             row_stride: COLS,
             col_stride: 1,
             shape: (ROWS, COLS),
         }
+    }
+    /// Builds a tensor from data known upfront — the caller never needs `mut`
+    /// or a separate load step.
+    pub fn new(data: [Scalar; NUMEL]) -> Self
+    where
+        S: OwnedStorage<[Scalar; NUMEL]>,
+    {
+        let mut t = Self::zeroed();
+        t.load_data(data);
+        t
     }
     pub fn get(self: &Self, i: usize, j: usize) -> Scalar {
         debug_assert!(i < self.shape.0 && j < self.shape.1);
@@ -65,7 +91,7 @@ impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> Tensor<ROWS, COLS
     /// directly with `row_offset(..) + j` instead of paying for a full
     /// `get_unchecked` (which recomputes every stride term) on each step.
     pub fn get_raw_buffer(&self) -> &[Scalar] {
-        &self.data
+        self.data.as_flat()
     }
     /// Flat offset of (i, 0) into `get_raw_buffer()` — the start of the
     /// contiguous row along the last axis.
@@ -74,8 +100,39 @@ impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> Tensor<ROWS, COLS
     pub unsafe fn row_offset(self: &Self, i: usize) -> usize {
         i * self.row_stride
     }
+    /// Loads a full, statically-sized buffer — for small tensors and known
+    /// data. For a tensor too big to build `[Scalar; NUMEL]` on the stack, see
+    /// [`Self::load_slice`] (`no_std`, no `alloc`) or [`Self::from_vec`].
     pub fn load_data(self: &mut Self, data: [Scalar; NUMEL]) -> () {
-        self.data = data
+        self.data.as_flat_mut().copy_from_slice(&data);
+    }
+    /// Copies from a runtime-sized slice — never materializes `[Scalar; NUMEL]`
+    /// on the stack, so it's the door for a large tensor without `alloc`
+    /// (a table already sitting in flash or in a driver-filled buffer).
+    pub fn load_slice(self: &mut Self, data: &[Scalar]) -> Result<(), LenMismatch> {
+        if data.len() != NUMEL {
+            return Err(LenMismatch);
+        }
+        self.data.as_flat_mut().copy_from_slice(data);
+        Ok(())
+    }
+    /// Builds a tensor straight from a `Vec` — the door for the `.npy`
+    /// pipeline, where the data doesn't exist as a compile-time-sized array in
+    /// the first place.
+    ///
+    /// Rends le `Vec` intact si sa longueur ne correspond pas à `NUMEL`, plutôt
+    /// que de le déverser dans un message de panique.
+    #[cfg(feature = "alloc")]
+    pub fn from_vec(data: alloc::vec::Vec<Scalar>) -> Result<Self, alloc::vec::Vec<Scalar>>
+    where
+        S: OwnedStorage<[Scalar; NUMEL]>,
+    {
+        if data.len() != NUMEL {
+            return Err(data);
+        }
+        let mut t = Self::zeroed();
+        t.data.as_flat_mut().copy_from_slice(&data);
+        Ok(t)
     }
     pub fn transpose(self: &mut Self) -> () {
         self.shape = (self.shape.1, self.shape.0);
@@ -94,7 +151,7 @@ impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> Tensor<ROWS, COLS
         let reference_index = lines.0 * self.row_stride + columns.0 * self.col_stride;
         let view_shape = (lines.1 - lines.0 + 1, columns.1 - columns.0 + 1);
         TensorView {
-            data: &self.data,
+            data: self.data.as_flat(),
             reference_index,
             row_stride: self.row_stride,
             col_stride: self.col_stride,
@@ -112,7 +169,7 @@ impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> Tensor<ROWS, COLS
         if col >= COLS {
             return None;
         }
-        let mut result = Tensor::<ROWS, 1, ROWS>::new();
+        let mut result = Tensor::<ROWS, 1, ROWS>::zeroed();
         for i in 0..ROWS {
             result.set(i, 0, self.get(i, col));
         }
@@ -128,8 +185,11 @@ impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> Tensor<ROWS, COLS
         }
     }
     /// Builds a tensor from an array of column vectors.
-    pub fn from_cols(cols: [Tensor<ROWS, 1, ROWS>; COLS]) -> Self {
-        let mut mat = Self::new();
+    pub fn from_cols(cols: [Tensor<ROWS, 1, ROWS>; COLS]) -> Self
+    where
+        S: OwnedStorage<[Scalar; NUMEL]>,
+    {
+        let mut mat = Self::zeroed();
         for j in 0..COLS {
             mat.set_col(j, &cols[j]);
         }
@@ -138,8 +198,11 @@ impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> Tensor<ROWS, COLS
     /// Returns the transpose as a new tensor — unlike [`Self::transpose`]
     /// (in-place, same static shape), this changes the static shape from
     /// `(ROWS, COLS)` to `(COLS, ROWS)`.
-    pub fn transposed(&self) -> Tensor<COLS, ROWS, NUMEL> {
-        let mut result = Tensor::<COLS, ROWS, NUMEL>::new();
+    pub fn transposed(&self) -> Tensor<COLS, ROWS, NUMEL, S>
+    where
+        S: OwnedStorage<[Scalar; NUMEL]>,
+    {
+        let mut result = Tensor::<COLS, ROWS, NUMEL, S>::zeroed();
         for i in 0..ROWS {
             for j in 0..COLS {
                 result.set(j, i, self.get(i, j));
@@ -176,7 +239,7 @@ impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> Tensor<ROWS, COLS
         &self,
         other: &Tensor<COLS, P, NUMEL_B>,
     ) -> Tensor<ROWS, P, NUMEL_C> {
-        let mut result = Tensor::<ROWS, P, NUMEL_C>::new();
+        let mut result = Tensor::<ROWS, P, NUMEL_C>::zeroed();
         for i in 0..ROWS {
             for j in 0..P {
                 let mut sum: Scalar = 0.0;
@@ -190,9 +253,14 @@ impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> Tensor<ROWS, COLS
     }
 }
 
-impl<const SIZE: usize, const NUMEL: usize> Tensor<SIZE, SIZE, NUMEL> {
-    pub fn identity() -> Self {
-        let mut result = Self::new();
+impl<const SIZE: usize, const NUMEL: usize, S: Storage<[Scalar; NUMEL]>>
+    Tensor<SIZE, SIZE, NUMEL, S>
+{
+    pub fn identity() -> Self
+    where
+        S: OwnedStorage<[Scalar; NUMEL]>,
+    {
+        let mut result = Self::zeroed();
         for i in 0..SIZE {
             result.set(i, i, 1.0);
         }
@@ -202,12 +270,15 @@ impl<const SIZE: usize, const NUMEL: usize> Tensor<SIZE, SIZE, NUMEL> {
 
 /// The column-vector shape: a "vector" is just a `Tensor` with one column.
 /// See the [`Vector`] alias.
-impl<const N: usize, const NUMEL: usize> Tensor<N, 1, NUMEL> {
+impl<const N: usize, const NUMEL: usize, S: Storage<[Scalar; NUMEL]>> Tensor<N, 1, NUMEL, S> {
     /// Builds a column tensor from a flat array — the `Vector::new(data)`
-    /// equivalent (can't reuse the name `new`, taken by the zero-arg
-    /// constructor on the general impl).
-    pub fn from_data(data: [Scalar; N]) -> Self {
-        let mut t = Self::new();
+    /// equivalent (can't reuse the name `new`, already taken by the general
+    /// impl's data constructor with a slightly different signature).
+    pub fn from_data(data: [Scalar; N]) -> Self
+    where
+        S: OwnedStorage<[Scalar; NUMEL]>,
+    {
+        let mut t = Self::zeroed();
         for i in 0..N {
             t.set(i, 0, data[i]);
         }
@@ -244,10 +315,13 @@ impl<const N: usize, const NUMEL: usize> Tensor<N, 1, NUMEL> {
         }
         max
     }
-    pub fn orthogonal_projection(&self, other: &Self) -> Self {
+    pub fn orthogonal_projection(&self, other: &Self) -> Self
+    where
+        S: OwnedStorage<[Scalar; NUMEL]> + Copy,
+    {
         let scale_factor = other.dot(other);
         if fabs(scale_factor) < 1e-8 {
-            return Self::new();
+            return Self::zeroed();
         }
         let ratio = self.dot(other) / scale_factor;
         *other * ratio
@@ -259,8 +333,11 @@ impl<const N: usize, const NUMEL: usize> Tensor<N, 1, NUMEL> {
         }
         s
     }
-    pub fn hadamard(&self, other: &Self) -> Self {
-        let mut result = Self::new();
+    pub fn hadamard(&self, other: &Self) -> Self
+    where
+        S: OwnedStorage<[Scalar; NUMEL]>,
+    {
+        let mut result = Self::zeroed();
         for i in 0..N {
             result.set(i, 0, self.get(i, 0) * other.get(i, 0));
         }
@@ -268,74 +345,104 @@ impl<const N: usize, const NUMEL: usize> Tensor<N, 1, NUMEL> {
     }
 }
 
-impl<const N: usize, const NUMEL: usize> Index<usize> for Tensor<N, 1, NUMEL> {
+impl<const N: usize, const NUMEL: usize, S: Storage<[Scalar; NUMEL]>> Index<usize>
+    for Tensor<N, 1, NUMEL, S>
+{
     type Output = Scalar;
     fn index(&self, i: usize) -> &Self::Output {
         &self.data[i * self.row_stride]
     }
 }
-impl<const N: usize, const NUMEL: usize> IndexMut<usize> for Tensor<N, 1, NUMEL> {
+impl<const N: usize, const NUMEL: usize, S: Storage<[Scalar; NUMEL]>> IndexMut<usize>
+    for Tensor<N, 1, NUMEL, S>
+{
     fn index_mut(&mut self, i: usize) -> &mut Self::Output {
         &mut self.data[i * self.row_stride]
     }
 }
 
-impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> Index<(usize, usize)>
-    for Tensor<ROWS, COLS, NUMEL>
+impl<const ROWS: usize, const COLS: usize, const NUMEL: usize, S: Storage<[Scalar; NUMEL]>>
+    Index<(usize, usize)> for Tensor<ROWS, COLS, NUMEL, S>
 {
     type Output = Scalar;
     fn index(&self, (i, j): (usize, usize)) -> &Self::Output {
         &self.data[i * self.row_stride + j * self.col_stride]
     }
 }
-impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> IndexMut<(usize, usize)>
-    for Tensor<ROWS, COLS, NUMEL>
+impl<const ROWS: usize, const COLS: usize, const NUMEL: usize, S: Storage<[Scalar; NUMEL]>>
+    IndexMut<(usize, usize)> for Tensor<ROWS, COLS, NUMEL, S>
 {
     fn index_mut(&mut self, (i, j): (usize, usize)) -> &mut Self::Output {
         &mut self.data[i * self.row_stride + j * self.col_stride]
     }
 }
 
-impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> Add for Tensor<ROWS, COLS, NUMEL> {
+impl<
+        const ROWS: usize,
+        const COLS: usize,
+        const NUMEL: usize,
+        S: OwnedStorage<[Scalar; NUMEL]>,
+    > Add for Tensor<ROWS, COLS, NUMEL, S>
+{
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
-        let mut result = Self::new();
+        let mut result = Self::zeroed();
         for k in 0..NUMEL {
             result.data[k] = self.data[k] + rhs.data[k];
         }
         result
     }
 }
-impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> Sub for Tensor<ROWS, COLS, NUMEL> {
+impl<
+        const ROWS: usize,
+        const COLS: usize,
+        const NUMEL: usize,
+        S: OwnedStorage<[Scalar; NUMEL]>,
+    > Sub for Tensor<ROWS, COLS, NUMEL, S>
+{
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
-        let mut result = Self::new();
+        let mut result = Self::zeroed();
         for k in 0..NUMEL {
             result.data[k] = self.data[k] - rhs.data[k];
         }
         result
     }
 }
-impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> Neg for Tensor<ROWS, COLS, NUMEL> {
+impl<
+        const ROWS: usize,
+        const COLS: usize,
+        const NUMEL: usize,
+        S: OwnedStorage<[Scalar; NUMEL]>,
+    > Neg for Tensor<ROWS, COLS, NUMEL, S>
+{
     type Output = Self;
     fn neg(self) -> Self::Output {
         self * -1.0
     }
 }
-impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> Mul<Scalar>
-    for Tensor<ROWS, COLS, NUMEL>
+impl<
+        const ROWS: usize,
+        const COLS: usize,
+        const NUMEL: usize,
+        S: OwnedStorage<[Scalar; NUMEL]>,
+    > Mul<Scalar> for Tensor<ROWS, COLS, NUMEL, S>
 {
     type Output = Self;
     fn mul(self, rhs: Scalar) -> Self::Output {
-        let mut result = Self::new();
+        let mut result = Self::zeroed();
         for k in 0..NUMEL {
             result.data[k] = self.data[k] * rhs;
         }
         result
     }
 }
-impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> Div<Scalar>
-    for Tensor<ROWS, COLS, NUMEL>
+impl<
+        const ROWS: usize,
+        const COLS: usize,
+        const NUMEL: usize,
+        S: OwnedStorage<[Scalar; NUMEL]>,
+    > Div<Scalar> for Tensor<ROWS, COLS, NUMEL, S>
 {
     type Output = Self;
     fn div(self, rhs: Scalar) -> Self::Output {
@@ -343,8 +450,8 @@ impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> Div<Scalar>
     }
 }
 
-impl<const ROWS: usize, const COLS: usize, const NUMEL: usize> PartialEq
-    for Tensor<ROWS, COLS, NUMEL>
+impl<const ROWS: usize, const COLS: usize, const NUMEL: usize, S: Storage<[Scalar; NUMEL]>>
+    PartialEq for Tensor<ROWS, COLS, NUMEL, S>
 {
     fn eq(&self, other: &Self) -> bool {
         let epsilon = 1e-5;

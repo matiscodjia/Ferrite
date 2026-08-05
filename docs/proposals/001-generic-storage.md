@@ -1,8 +1,7 @@
 # Proposition 001 — Stockage générique (stack / heap / arena) pour tout `ferrite`
 
-**Statut :** proposition — Phases 0, 1 et 5 appliquées le 2026-07-31 ; Phase 2 partielle
-(`Tensor4D` seul) ; Phases 3 et 4 non implémentées
-**Date :** 2026-07-31
+**Statut :** proposition — Phases 0, 1, 2 et 5 appliquées ; Phases 3 et 4 non implémentées
+**Date :** 2026-07-31, Phase 2 complétée le 2026-08-05
 **Portée :** `src/linalg/*`, `src/sp/*`, `src/autodiff/*`, `src/io/*`, `Cargo.toml`
 
 ---
@@ -163,31 +162,43 @@ comme aujourd'hui, et les instanciations heap sont `Clone` seulement. Rien à é
 c'est ce qui interdit aux tenseurs heap de traverser l'API `autodiff` actuelle (cf. Phase 4).
 
 **Chargement des données.** `load_data(data: [Scalar; NUMEL])` prend l'array *par valeur* : le
-temporaire est sur la pile du côté appelant, même si le tenseur est heap-backé. Trois portes, par
-ordre de coût :
+temporaire est sur la pile du côté appelant, même si le tenseur est heap-backé. Quatre portes, par
+ordre de coût — implémentées identiquement sur les quatre rangs de tenseur :
 
 | méthode | dispo | coût |
 |---|---|---|
-| `load_data([Scalar; NUMEL])` | partout | conservée telle quelle, pour la rétro-compat et les petits tenseurs (doctest de `correlate.rs`, `tests/`) |
-| `load_slice(&[Scalar]) -> Result<(), LenMismatch>` | no_std, sans alloc | copie, pas de temporaire géant — la porte pour tout ce qui est gros |
-| `from_vec(Vec<Scalar>) -> Result<Self, Vec<Scalar>>` | `alloc`, buffers plats | déplacement sans copie (`into_boxed_slice().try_into()` sur un `Vec` de capacité exacte) — la porte du pipeline `.npy` |
+| `new(data: [Scalar; NUMEL])` / `load_data([Scalar; NUMEL])` | partout | `new` construit et charge en un appel (pas de `mut` requis côté appelant) ; `load_data` conservée telle quelle pour recharger un tenseur existant. Pour les petits tenseurs (doctest de `correlate.rs`, `tests/`) |
+| `load_slice(&[Scalar]) -> Result<(), LenMismatch>` | no_std, sans alloc | copie, pas de temporaire géant — la porte pour tout ce qui est gros sans allocateur |
+| `from_vec(Vec<Scalar>) -> Result<Self, Vec<Scalar>>` | `alloc`, buffers plats | implémenté via `zeroed()` (alloc direct, jamais de temporaire pile) + copie tas→tas — la porte du pipeline `.npy`, remplace le `zeroed()`+`load_vec()` en deux étapes |
 
 Ne pas supprimer `load_data` : ça casserait le doctest de `cross_correlate2d` et les tests pour
 zéro gain.
 
 ---
 
-## Phase 2 — Les tenseurs ⚠️ (partielle : `Tensor4D` seul)
+## Phase 2 — Les tenseurs ✅ (appliquée aux quatre rangs)
 
-> Fait : `Tensor4D` (+ alias `Tensor4DBoxed`), `tensordot_3`, `cross_correlate2d`.
-> Reste : `Tensor`, `Tensor3D`, `Tensor6D`, `tensordot_1`, `tensordot_2` — rien dans le pipeline
-> actuel ne les instancie avec un `NUMEL` problématique, donc non urgent. Le traitement est
-> strictement le même, ci-dessous.
+> Fait : `Tensor` (2D), `Tensor3D`, `Tensor4D` (+ alias `Tensor4DBoxed`), `Tensor6D`,
+> `tensordot_1`/`tensordot_2`/`tensordot_3`, `cross_correlate2d`. `tensordot_1`/`tensordot_2` et les
+> méthodes qui produisent une forme différente de `Self` (`multiply`, `get_col`, `identity`...)
+> restent en stockage par défaut (pas de paramètre de storage propagé sur leurs opérandes/sortie) —
+> rien dans le pipeline actuel n'en a besoin, cf. discussion initiale ci-dessus.
 >
 > Confirmation à l'usage : la friction anticipée sur l'inférence n'a pas eu lieu. Aucun call site
 > existant n'a eu besoin d'un turbofish, l'annotation du résultat suffit partout. Et aucun corps de
 > `get`/`set`/`tensordot_3`/`im2col_view` n'a changé — seulement les signatures, plus
 > `&self.data` → `self.data.as_flat()` comme prévu.
+>
+> **Écart par rapport au sketch initial : `new()` s'est scindé en deux.** Le zéro-init générique
+> (`S::zeroed()` sous borne `OwnedStorage`) est resté, mais renommé `zeroed()` et passé
+> `pub(crate)` — invisible hors du crate, y compris depuis `tests/*.rs` (qui compile comme un crate
+> externe). `new()` prend maintenant les données directement (`new(data: [Scalar; NUMEL])`,
+> lui-même `zeroed()` + `load_data()` en une étape) : impossible pour un appelant externe d'obtenir
+> un tenseur zéro silencieux en oubliant l'étape de chargement, puisqu'il n'y a plus de constructeur
+> public qui ne prenne pas de données. Les algorithmes internes du crate (`identity`, `multiply`,
+> `qr_decomposition`, `tensordot_*`, `sp::kernels::*`...), qui construisent un résultat élément par
+> élément et ne peuvent pas fournir les données d'un coup, utilisent `zeroed()` directement — ils
+> sont dans le crate, donc `pub(crate)` ne les gêne pas.
 
 Traitement mécanique et identique pour `Tensor`, `Tensor3D`, `Tensor4D`, `Tensor6D` :
 
@@ -263,8 +274,9 @@ machinerie :
 > hors zone mesurée pour le premier, non bloquant pour le second.
 
 1. `load_inputs.rs` : `Tensor4DBoxed` pour `vid_tensor` / `fil_tensor` / `result`, chargement via
-   `from_vec` (déplacement sans copie), `unwrap_or_else(|_| panic!("…"))` plutôt que `.expect()` —
-   pour ne pas déverser un `Vec<Scalar>` de 1,5 M d'éléments dans un message de panique.
+   `from_vec` (un seul appel, sans `mut` côté appelant — copie tas→tas en interne, cf. Phase 1),
+   `unwrap_or_else(|_| panic!("…"))` plutôt que `.expect()` — pour ne pas déverser un `Vec<Scalar>`
+   de 1,5 M d'éléments dans un message de panique.
 2. **Avant** de migrer, factoriser le `match` : ~20 bras quasi identiques (dont 15 commentés parce
    qu'ils overflow). Un
    `macro_rules! bench_case!(vid, fil, key, N,C,H,W,NUMEL_X, K,NUMEL_F, H_OUT,W_OUT,NUMEL_Y)`

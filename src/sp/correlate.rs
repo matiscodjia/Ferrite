@@ -38,12 +38,10 @@ use crate::scalar::Scalar;
 /// use ferrite::sp::cross_correlate2d;
 ///
 /// // one 3x3 frame, single channel
-/// let mut frames = Tensor4D::<1, 1, 3, 3, 9>::new();
-/// frames.load_data([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]);
+/// let frames = Tensor4D::<1, 1, 3, 3, 9>::new([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]);
 ///
 /// // one 2x2 box filter
-/// let mut filters = Tensor4D::<1, 1, 2, 2, 4>::new();
-/// filters.load_data([1.0, 1.0, 1.0, 1.0]);
+/// let filters = Tensor4D::<1, 1, 2, 2, 4>::new([1.0, 1.0, 1.0, 1.0]);
 ///
 /// let out: Tensor4D<1, 2, 2, 1, 4> = cross_correlate2d(&frames, &filters, 1);
 /// assert_eq!(12.0, out.get(0, 0, 0, 0)); // 1+2+4+5
