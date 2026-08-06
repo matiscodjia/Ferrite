@@ -16,6 +16,26 @@ pub struct Tensor<
     pub(super) shape: (usize, usize),
 }
 
+/// Passe par le buffer brut (`get_raw_buffer`) plutôt que par un `#[derive]` :
+/// `S` (`StackStorage`/`HeapStorage`) n'a pas de raison d'implémenter
+/// `defmt::Format` lui-même, seul le contenu logé importe pour le log.
+#[cfg(feature = "defmt")]
+impl<const ROWS: usize, const COLS: usize, const NUMEL: usize, S: Storage<[Scalar; NUMEL]>>
+    defmt::Format for Tensor<ROWS, COLS, NUMEL, S>
+{
+    fn format(&self, fmt: defmt::Formatter) {
+        // `{}` générique plutôt que `{=[f32]}` : `Scalar` est `f32` ou `f64`
+        // selon la feature `f64`, et les deux implémentent `defmt::Format`.
+        defmt::write!(
+            fmt,
+            "Tensor<{=usize}, {=usize}> {}",
+            ROWS,
+            COLS,
+            self.get_raw_buffer()
+        );
+    }
+}
+
 pub struct TensorView<'a> {
     data: &'a [Scalar],
     reference_index: usize,
