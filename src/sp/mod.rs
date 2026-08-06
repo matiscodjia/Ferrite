@@ -5,8 +5,8 @@
 //! the stack, so a `no_std` target pays no allocation for the intermediate
 //! layouts.
 
+pub mod conv_streaming;
 pub mod correlate;
 pub mod kernels;
-
 pub use correlate::cross_correlate2d;
 pub use kernels::{filter_bank, Gaussian3D, Sobel3D};
