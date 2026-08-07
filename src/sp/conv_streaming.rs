@@ -1,10 +1,5 @@
 use crate::Scalar;
 
-/// Row-at-a-time 2D convolution: RAM is `O(KH * W)` (one ring buffer of `KH`
-/// rows), not `O(H * W)` — the frame itself is never held in memory. Feed it
-/// one sensor row at a time via [`push_row`](Self::push_row); once
-/// [`ready_to_compute`](Self::ready_to_compute) is true, [`conv2d`](Self::conv2d)
-/// produces the output row for the oldest window currently buffered.
 pub struct ConvStreaming<const W: usize, const KH: usize, const KW: usize> {
     rows: [[Scalar; W]; KH],
     next_row_to_write: usize,
@@ -12,22 +7,22 @@ pub struct ConvStreaming<const W: usize, const KH: usize, const KW: usize> {
 }
 
 impl<const W: usize, const KH: usize, const KW: usize> ConvStreaming<W, KH, KW> {
-    pub fn new() -> Self {
+    fn new() -> Self {
         ConvStreaming {
             rows: [[0.0; W]; KH],
             next_row_to_write: 0,
             rows_filled: 0,
         }
     }
-    pub fn push_row(self: &mut Self, row: [Scalar; W]) {
+    fn push_row(self: &mut Self, row: [Scalar; W]) {
         self.rows[self.next_row_to_write] = row;
         self.next_row_to_write = (self.next_row_to_write + 1) % KH;
         self.rows_filled = (self.rows_filled + 1).min(KH);
     }
-    pub fn ready_to_compute(self: &Self) -> bool {
+    fn ready_to_compute(self: &Self) -> bool {
         self.rows_filled == KH
     }
-    pub fn conv2d<const W_OUT: usize>(self: &Self, kernel: &[[Scalar; KW]; KH]) -> [Scalar; W_OUT] {
+    fn conv2d<const W_OUT: usize>(self: &Self, kernel: &[[Scalar; KW]; KH]) -> [Scalar; W_OUT] {
         let mut res = [0.0; W_OUT];
         for l in 0..W_OUT {
             for j in 0..KH {
@@ -38,12 +33,6 @@ impl<const W: usize, const KH: usize, const KW: usize> ConvStreaming<W, KH, KW> 
             }
         }
         return res;
-    }
-}
-
-impl<const W: usize, const KH: usize, const KW: usize> Default for ConvStreaming<W, KH, KW> {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
