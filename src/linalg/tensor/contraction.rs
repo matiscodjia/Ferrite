@@ -136,6 +136,7 @@ where
 {
     assert!(a.shape() == [N, H_OUT, W_OUT, C, KH, KW] && b.shape == [K, C, KH, KW]);
     let mut c = Tensor4D::<N, H_OUT, W_OUT, K, NUMEL_C, SC>::zeroed();
+    let b_row = b.get_raw_buffer();
     for n in 0..N {
         for i in 0..H_OUT {
             for j in 0..W_OUT {
@@ -146,17 +147,23 @@ where
                         // par les bornes des boucles for englobantes.
                         let a_base = unsafe { a.row_offset(n, i, j, ch, p) };
                         let a_row = a.get_raw_buffer();
-                        for q in 0..KW {
-                            // SAFETY: KW a un stride de 1 dans tout Rank6 (dernier axe
-                            // toujours contigu, par construction de row_offset/get_raw_buffer),
-                            // donc a_base + q est l'indice plat de (n, i, j, ch, p, q) ; q < KW
-                            // est garanti par la boucle for englobante.
-                            let av = unsafe { *a_row.get_unchecked(a_base + q) };
-                            for k in 0..K {
-                                // SAFETY: k < K, ch < C, p < KH, q < KW sont garantis par les
-                                // bornes des boucles for englobantes, et b.shape == [K, C, KH, KW]
-                                // est vérifié par l'assert! en tête de fonction.
-                                sums[k] += av * unsafe { b.get_unchecked(k, ch, p, q) };
+                        for k in 0..K {
+                            // SAFETY: k < K, ch < C, p < KH sont garantis par les bornes des
+                            // boucles for englobantes, et b.shape == [K, C, KH, KW] est
+                            // vérifié par l'assert! en tête de fonction — mêmes garanties que
+                            // row_offset(n, c, i) sur Tensor4D, une "ligne" ici étant (k, ch, p, ·).
+                            // Hissé hors de la boucle `q` : c'était recalculé à chaque (q, k)
+                            // dans l'ancienne version (indice plat à 4 termes de
+                            // `get_unchecked(k, ch, p, q)`), maintenant une seule fois par k.
+                            let b_base = unsafe { b.row_offset(k, ch, p) };
+                            for q in 0..KW {
+                                // SAFETY: KW a un stride de 1 dans tout Rank6 et sur b (dernier
+                                // axe toujours contigu), donc a_base + q et b_base + q sont les
+                                // indices plats de (n, i, j, ch, p, q) et (k, ch, p, q) ; q < KW
+                                // est garanti par la boucle for englobante.
+                                let av = unsafe { *a_row.get_unchecked(a_base + q) };
+                                let bv = unsafe { *b_row.get_unchecked(b_base + q) };
+                                sums[k] += av * bv;
                             }
                         }
                     }
