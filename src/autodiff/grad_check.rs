@@ -26,11 +26,7 @@ impl GradChecker {
         <Net as Module<Input>>::Output: Copy,
         Input: Copy,
     {
-        debug_assert_eq!(
-            net.num_params(),
-            N,
-            "N must match net.num_params()"
-        );
+        debug_assert_eq!(net.num_params(), N, "N must match net.num_params()");
 
         // Analytical gradients
         let (output, ctx) = net.forward(input);
