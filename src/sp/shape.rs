@@ -18,7 +18,7 @@
 /// resolution with one filter.
 ///
 /// ```
-/// use ferrite::conv_shape;
+/// use frugal_ml::conv_shape;
 ///
 /// // Shorthand: N = C = K = 1.
 /// conv_shape!(pub frame96, H = 96, W = 96, KH = 3, KW = 3, stride = 1);
@@ -42,8 +42,8 @@
 /// abstraction to learn:
 ///
 /// ```
-/// use ferrite::conv_shape;
-/// use ferrite::linalg::{tensordot_3, Tensor4D};
+/// use frugal_ml::conv_shape;
+/// use frugal_ml::linalg::{tensordot_3, Tensor4D};
 ///
 /// conv_shape!(frame96, H = 96, W = 96, KH = 3, KW = 3, stride = 1);
 ///

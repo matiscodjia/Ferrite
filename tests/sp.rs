@@ -1,6 +1,6 @@
-use ferrite::linalg::tensor::{Tensor3D, Tensor4D};
-use ferrite::scalar::{fabs, Scalar};
-use ferrite::sp::{cross_correlate2d, filter_bank, Gaussian3D, Sobel3D};
+use frugal_ml::linalg::tensor::{Tensor3D, Tensor4D};
+use frugal_ml::scalar::{fabs, Scalar};
+use frugal_ml::sp::{cross_correlate2d, filter_bank, Gaussian3D, Sobel3D};
 
 #[test]
 fn test_cross_correlate2d_single_frame_two_filters() {

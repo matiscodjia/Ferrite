@@ -1,13 +1,13 @@
-use ferrite::autodiff::core::module::Module;
-use ferrite::autodiff::grad_check::GradChecker;
-use ferrite::autodiff::layers::activations::{LeakyReLU, ReLU, Tanh};
-use ferrite::autodiff::layers::linear::Linear;
-use ferrite::autodiff::loss::mse;
-use ferrite::autodiff::optim::sgd::Sgd;
-use ferrite::autodiff::optim::train::train_step;
-use ferrite::linalg::tensor::Vector;
-use ferrite::seq;
-use ferrite::Scalar;
+use frugal_ml::autodiff::core::module::Module;
+use frugal_ml::autodiff::grad_check::GradChecker;
+use frugal_ml::autodiff::layers::activations::{LeakyReLU, ReLU, Tanh};
+use frugal_ml::autodiff::layers::linear::Linear;
+use frugal_ml::autodiff::loss::mse;
+use frugal_ml::autodiff::optim::sgd::Sgd;
+use frugal_ml::autodiff::optim::train::train_step;
+use frugal_ml::linalg::tensor::Vector;
+use frugal_ml::seq;
+use frugal_ml::Scalar;
 
 #[test]
 fn seq_2_layers_forward_backward() {

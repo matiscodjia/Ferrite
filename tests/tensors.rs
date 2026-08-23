@@ -1,12 +1,12 @@
-use ferrite::linalg::tensor::tensordot_1;
-use ferrite::linalg::tensor::tensordot_2;
-use ferrite::linalg::tensor::tensordot_3;
-use ferrite::linalg::tensor::Tensor;
-use ferrite::linalg::tensor::Tensor3D;
-use ferrite::linalg::tensor::Tensor4D;
-use ferrite::linalg::tensor::Tensor6D;
-use ferrite::linalg::tensor::Vector;
-use ferrite::scalar::Scalar;
+use frugal_ml::linalg::tensor::tensordot_1;
+use frugal_ml::linalg::tensor::tensordot_2;
+use frugal_ml::linalg::tensor::tensordot_3;
+use frugal_ml::linalg::tensor::Tensor;
+use frugal_ml::linalg::tensor::Tensor3D;
+use frugal_ml::linalg::tensor::Tensor4D;
+use frugal_ml::linalg::tensor::Tensor6D;
+use frugal_ml::linalg::tensor::Vector;
+use frugal_ml::scalar::Scalar;
 #[test]
 //This is a compilation level test, test NOK = No compilation
 fn test_tensor_creation_and_shape() {
@@ -631,7 +631,7 @@ fn test_tensordot_3_view_matches_materialised() {
 #[cfg(feature = "alloc")]
 #[test]
 fn test_storage_agnostic_cross_correlation() {
-    use ferrite::linalg::Tensor4DBoxed;
+    use frugal_ml::linalg::Tensor4DBoxed;
 
     const N: usize = 2;
     const C: usize = 3;
@@ -675,7 +675,7 @@ fn test_storage_agnostic_cross_correlation() {
 #[cfg(feature = "alloc")]
 #[test]
 fn test_mixed_storage_operands() {
-    use ferrite::linalg::Tensor4DBoxed;
+    use frugal_ml::linalg::Tensor4DBoxed;
 
     let vid_heap =
         Tensor4DBoxed::<1, 1, 4, 4, 16>::from_vec((0..16).map(|i| i as Scalar).collect()).unwrap();

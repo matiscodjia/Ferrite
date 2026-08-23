@@ -1,9 +1,9 @@
-use ferrite::linalg::decomposition::{
+use frugal_ml::linalg::decomposition::{
     gram_schmidt, jacobi_rotation, qr_decomposition, solve_linear_system, solve_upper_triangular,
     svd, svd_2x2,
 };
-use ferrite::linalg::tensor::{Tensor, Vector};
-use ferrite::Scalar;
+use frugal_ml::linalg::tensor::{Tensor, Vector};
+use frugal_ml::Scalar;
 
 #[test]
 fn test_gram_schmidt_2d() {

@@ -34,8 +34,8 @@ use crate::scalar::Scalar;
 /// N * H_OUT * W_OUT * K * C * KH * KW multiply-adds and zero extra storage.
 ///
 /// ```
-/// use ferrite::linalg::tensor::Tensor4D;
-/// use ferrite::sp::cross_correlate2d;
+/// use frugal_ml::linalg::tensor::Tensor4D;
+/// use frugal_ml::sp::cross_correlate2d;
 ///
 /// // one 3x3 frame, single channel
 /// let frames = Tensor4D::<1, 1, 3, 3, 9>::new([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]);

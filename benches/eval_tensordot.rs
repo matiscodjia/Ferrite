@@ -1,6 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use ferrite::linalg::{tensordot_3, Tensor3D, Tensor4D};
-use ferrite::sp::{filter_bank, Gaussian3D};
+use frugal_ml::linalg::{tensordot_3, Tensor3D, Tensor4D};
+use frugal_ml::sp::{filter_bank, Gaussian3D};
 use std::hint::black_box;
 
 fn bench_for_k<const K: usize, const NUMEL_BANK: usize, const NUMEL_OUT: usize>(

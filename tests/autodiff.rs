@@ -1,14 +1,14 @@
 mod iris_data;
 
-use ferrite::autodiff::core::module::Module;
-use ferrite::autodiff::layers::activations::{ReLU, Softmax, Tanh};
-use ferrite::autodiff::layers::linear::Linear;
-use ferrite::autodiff::loss::{cross_entropy, mse};
-use ferrite::autodiff::optim::sgd::Sgd;
-use ferrite::autodiff::optim::train::train_step;
-use ferrite::linalg::tensor::{Tensor, Vector};
-use ferrite::seq;
-use ferrite::Scalar;
+use frugal_ml::autodiff::core::module::Module;
+use frugal_ml::autodiff::layers::activations::{ReLU, Softmax, Tanh};
+use frugal_ml::autodiff::layers::linear::Linear;
+use frugal_ml::autodiff::loss::{cross_entropy, mse};
+use frugal_ml::autodiff::optim::sgd::Sgd;
+use frugal_ml::autodiff::optim::train::train_step;
+use frugal_ml::linalg::tensor::{Tensor, Vector};
+use frugal_ml::seq;
+use frugal_ml::Scalar;
 
 #[test]
 fn test_integration_vector_tensor() {
