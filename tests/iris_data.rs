@@ -1,4 +1,4 @@
-// UCI Iris dataset — 150 samples, 4 features, 3 classes.
+// UCI Iris dataset: 150 samples, 4 features, 3 classes.
 // Format : ([sepal_length, sepal_width, petal_length, petal_width], class_index)
 // Classes : 0 = Setosa, 1 = Versicolor, 2 = Virginica
 pub const IRIS: [([f32; 4], usize); 150] = [

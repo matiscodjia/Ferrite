@@ -74,7 +74,7 @@ impl<const ROWS: usize, const COLS: usize, const NUMEL: usize, S: Storage<[Scala
             shape: (ROWS, COLS),
         }
     }
-    /// Builds a tensor from data known upfront — the caller never needs `mut`
+    /// Builds a tensor from data known upfront, the caller never needs `mut`
     /// or a separate load step.
     pub fn new(data: [Scalar; NUMEL]) -> Self
     where
@@ -113,20 +113,20 @@ impl<const ROWS: usize, const COLS: usize, const NUMEL: usize, S: Storage<[Scala
     pub fn get_raw_buffer(&self) -> &[Scalar] {
         self.data.as_flat()
     }
-    /// Flat offset of (i, 0) into `get_raw_buffer()` — the start of the
+    /// Flat offset of (i, 0) into `get_raw_buffer()`: the start of the
     /// contiguous row along the last axis.
     /// # Safety
     /// The caller guarantees i < self.shape.0.
     pub unsafe fn row_offset(self: &Self, i: usize) -> usize {
         i * self.row_stride
     }
-    /// Loads a full, statically-sized buffer — for small tensors and known
+    /// Loads a full, statically-sized buffer, for small tensors and known
     /// data. For a tensor too big to build `[Scalar; NUMEL]` on the stack, see
     /// [`Self::load_slice`] (`no_std`, no `alloc`) or [`Self::from_vec`].
     pub fn load_data(self: &mut Self, data: [Scalar; NUMEL]) -> () {
         self.data.as_flat_mut().copy_from_slice(&data);
     }
-    /// Copies from a runtime-sized slice — never materializes `[Scalar; NUMEL]`
+    /// Copies from a runtime-sized slice, never materializes `[Scalar; NUMEL]`
     /// on the stack, so it's the door for a large tensor without `alloc`
     /// (a table already sitting in flash or in a driver-filled buffer).
     pub fn load_slice(self: &mut Self, data: &[Scalar]) -> Result<(), LenMismatch> {
@@ -136,7 +136,7 @@ impl<const ROWS: usize, const COLS: usize, const NUMEL: usize, S: Storage<[Scala
         self.data.as_flat_mut().copy_from_slice(data);
         Ok(())
     }
-    /// Builds a tensor straight from a `Vec` — the door for the `.npy`
+    /// Builds a tensor straight from a `Vec`, the door for the `.npy`
     /// pipeline, where the data doesn't exist as a compile-time-sized array in
     /// the first place.
     ///
@@ -215,7 +215,7 @@ impl<const ROWS: usize, const COLS: usize, const NUMEL: usize, S: Storage<[Scala
         }
         mat
     }
-    /// Returns the transpose as a new tensor — unlike [`Self::transpose`]
+    /// Returns the transpose as a new tensor, unlike [`Self::transpose`]
     /// (in-place, same static shape), this changes the static shape from
     /// `(ROWS, COLS)` to `(COLS, ROWS)`.
     pub fn transposed(&self) -> Tensor<COLS, ROWS, NUMEL, S>
@@ -291,7 +291,7 @@ impl<const SIZE: usize, const NUMEL: usize, S: Storage<[Scalar; NUMEL]>>
 /// The column-vector shape: a "vector" is just a `Tensor` with one column.
 /// See the [`Vector`] alias.
 impl<const N: usize, const NUMEL: usize, S: Storage<[Scalar; NUMEL]>> Tensor<N, 1, NUMEL, S> {
-    /// Builds a column tensor from a flat array — the `Vector::new(data)`
+    /// Builds a column tensor from a flat array, the `Vector::new(data)`
     /// equivalent (can't reuse the name `new`, already taken by the general
     /// impl's data constructor with a slightly different signature).
     pub fn from_data(data: [Scalar; N]) -> Self
@@ -484,7 +484,7 @@ impl<const ROWS: usize, const COLS: usize, const NUMEL: usize, S: Storage<[Scala
     }
 }
 
-/// A vector is just a `Tensor` with one column — this alias is the only
+/// A vector is just a `Tensor` with one column: this alias is the only
 /// thing that distinguishes it, `Tensor` is the crate's one elementary
 /// structure.
 pub type Vector<const N: usize> = Tensor<N, 1, N>;

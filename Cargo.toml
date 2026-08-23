@@ -2,14 +2,14 @@
 name = "frugal_ml"
 version = "0.1.0"
 edition = "2021"
-description = "Ahead-of-time, no_std linear algebra and reverse-mode autodiff for bare-metal microcontrollers — zero heap, zero dynamic dispatch, the computation graph is a type resolved at compile time"
+description = "Ahead-of-time, no_std linear algebra and reverse-mode autodiff for bare-metal microcontrollers: zero heap, zero dynamic dispatch, the computation graph is a type resolved at compile time"
 repository = "https://github.com/matiscodjia/frugal_ml"
 license = "MIT"
 keywords = ["no-std", "embedded", "deep-learning", "neural-network", "microcontroller"]
 categories = ["no-std", "embedded", "science"]
 
 [dependencies]
-# Sonde de benchmark (asm!) : uniquement côté hôte, comme `regex` ci-dessous —
+# Sonde de benchmark (asm!) : uniquement côté hôte, comme `regex` ci-dessous ;
 # doit rester optionnelle pour que la cible bare-metal ne tente jamais de la
 # compiler.
 asm = { version = "0.3.0", optional = true }
@@ -30,13 +30,13 @@ default = ["std"]
 # `alloc` et `std` n'activent que l'instrumentation de test et de benchmark.
 alloc = []
 std = ["alloc", "dep:regex", "dep:asm"]
-# Active f64 partout dans le moteur (debug/gradient checking) — pas pour l'embarqué.
+# Active f64 partout dans le moteur (debug/gradient checking), pas pour l'embarqué.
 f64 = []
 # Implémente `defmt::Format` sur `Tensor` (matrices).
 defmt = ["dep:defmt"]
 
 # Sonde de benchmark : lit des .npy et mesure la cross-corrélation. N'a de sens
-# que sur hôte, d'où `required-features` — sans quoi `--no-default-features`
+# que sur hôte, d'où `required-features` ; sans quoi `--no-default-features`
 # essaie de le compiler pour Cortex-M.
 [[bin]]
 name = "frugal_ml"

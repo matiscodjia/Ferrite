@@ -53,7 +53,7 @@ pub fn read_npy(path: &std::path::Path) -> Result<NpyArray, std::io::Error> {
     };
 
     // 5. extract descr, fortran_order, shape from it (plain text parsing,
-    //    no real Python parser needed — just look for substrings)
+    //    no real Python parser needed, just look for substrings)
 
     let descr_re = Regex::new(r"'descr': '([^']+)'").unwrap();
     let fortran_re = Regex::new(r"'fortran_order': (True|False)").unwrap();

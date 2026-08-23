@@ -1,7 +1,7 @@
 use crate::Scalar;
 
 /// Row-at-a-time 2D convolution: RAM is `O(KH * W)` (one ring buffer of `KH`
-/// rows), not `O(H * W)` — the frame itself is never held in memory. Feed it
+/// rows), not `O(H * W)`: the frame itself is never held in memory. Feed it
 /// one sensor row at a time via [`push_row`](Self::push_row); once
 /// [`ready_to_compute`](Self::ready_to_compute) is true, [`conv2d`](Self::conv2d)
 /// produces the output row for the oldest window currently buffered.
@@ -127,7 +127,7 @@ mod tests {
     /// Load-ramp test: streams real 720p rows into `ConvStreaming` at
     /// increasing simulated sensor line rates (`fps` ascending, so the
     /// inter-row budget `1 / (fps * H)` shrinks), pacing each row with a real
-    /// `sleep()` rather than just measuring compute time — so this also
+    /// `sleep()` rather than just measuring compute time, so this also
     /// picks up OS scheduling jitter, not just raw throughput. Every
     /// resolution below 720p already fits comfortably in a full-frame
     /// buffer, so there's nothing to observe there; 720p (1280 wide) is the
@@ -135,7 +135,7 @@ mod tests {
     /// exists for.
     ///
     /// Ignored by default: needs `tests/fixtures/sequence.npy` locally
-    /// (280x3x720x1280, 3.1 GB, gitignored — not present in CI).
+    /// (280x3x720x1280, 3.1 GB, gitignored, not present in CI).
     /// `cargo test -- --ignored --nocapture`
     #[cfg(feature = "std")]
     #[test]
@@ -153,10 +153,10 @@ mod tests {
         const W_OUT: usize = W - KW + 1;
 
         let arr = read_npy(Path::new("tests/fixtures/sequence.npy"))
-            .expect("tests/fixtures/sequence.npy not found — this test needs the local fixture");
+            .expect("tests/fixtures/sequence.npy not found: this test needs the local fixture");
         assert_eq!(arr.shape, std::vec![280, 3, 720, 1280]);
 
-        // Uniform 3x3 box blur — not the point of this test, just something
+        // Uniform 3x3 box blur, not the point of this test, just something
         // real for conv2d to spend time on.
         let kernel = [[1.0 / 9.0; KW]; KH];
 

@@ -2,7 +2,7 @@ use super::tensor6d::TensorView6D;
 use crate::linalg::storage::{Buffer, LenMismatch, OwnedStorage, StackStorage, Storage};
 use crate::scalar::Scalar;
 
-/// `S` determines where the buffer lives — the stack by default, so
+/// `S` determines where the buffer lives, the stack by default, so
 /// existing instantiations (`Tensor4D::<1, 3, 32, 32, 3072>`) are
 /// unchanged. See [`Tensor4DBoxed`] for the heap variant.
 pub struct Tensor4D<
@@ -21,7 +21,7 @@ pub struct Tensor4D<
     pub(super) shape: [usize; 4],
 }
 
-/// `Tensor4D` whose buffer lives on the heap — for shapes the stack
+/// `Tensor4D` whose buffer lives on the heap, for shapes the stack
 /// cannot carry (scaling-up benchmarks).
 #[cfg(feature = "alloc")]
 pub type Tensor4DBoxed<
@@ -69,7 +69,7 @@ impl<
             shape: [BATCHES, CHANNELS, ROWS, COLS],
         }
     }
-    /// Builds a tensor from data known upfront — the caller never needs `mut`
+    /// Builds a tensor from data known upfront, the caller never needs `mut`
     /// or a separate load step.
     pub fn new(data: [Scalar; NUMEL]) -> Self
     where
@@ -79,7 +79,7 @@ impl<
         t.load_data(data);
         t
     }
-    /// Copies from a runtime-sized slice — never materializes `[Scalar; NUMEL]`
+    /// Copies from a runtime-sized slice, never materializes `[Scalar; NUMEL]`
     /// on the stack, so it's the door for a large tensor without `alloc`.
     pub fn load_slice(self: &mut Self, data: &[Scalar]) -> Result<(), LenMismatch> {
         if data.len() != NUMEL {
@@ -88,7 +88,7 @@ impl<
         self.data.as_flat_mut().copy_from_slice(data);
         Ok(())
     }
-    /// Builds a tensor straight from a `Vec` in one step — the `.npy`
+    /// Builds a tensor straight from a `Vec` in one step: the `.npy`
     /// pipeline's door, without the caller needing a `mut` local for the
     /// zeroed()+load_vec() two-step.
     #[cfg(feature = "alloc")]
@@ -162,7 +162,7 @@ impl<
     pub fn get_raw_buffer(&self) -> &[Scalar] {
         self.data.as_flat()
     }
-    /// Flat offset of (b, c, i, 0) into `get_raw_buffer()` — the start of the
+    /// Flat offset of (b, c, i, 0) into `get_raw_buffer()`: the start of the
     /// contiguous row along the last axis.
     /// # Safety
     /// The caller guarantees b < self.shape[0], c < self.shape[1], i < self.shape[2].
@@ -173,7 +173,7 @@ impl<
         *self.data = data
     }
     /// Loads a dynamically-sized buffer, never materializing
-    /// `[Scalar; NUMEL]` on the stack — the entry point for large tensors.
+    /// `[Scalar; NUMEL]` on the stack: the entry point for large tensors.
     ///
     /// Hands the `Vec` back intact if its length doesn't match `NUMEL`,
     /// rather than dumping it into a panic message.
@@ -191,8 +191,8 @@ impl<
     /// Builds the im2col view of this (N x C x H x W) tensor for a KH x KW
     /// window sliding by `stride`, without copying any data.
     ///
-    /// `H_OUT` and `W_OUT` must be passed explicitly — deriving them from
-    /// `stride` would need `generic_const_exprs` — and are checked here against
+    /// `H_OUT` and `W_OUT` must be passed explicitly (deriving them from
+    /// `stride` would need `generic_const_exprs`) and are checked here against
     /// the usual convolution output size, `(H - KH) / stride + 1`.
     pub fn im2col_view<
         'a,

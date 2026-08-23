@@ -89,7 +89,7 @@ fn test_indexing_axis_overflow_transposed() {
 
 #[test]
 fn test_tensordot() {
-    // (2 x 3) . (2 x 3) -> (2 x 2) — b's contracted axis (3) is last, per the
+    // (2 x 3) . (2 x 3) -> (2 x 2): b's contracted axis (3) is last, per the
     // shared tensordot_1/2/3 convention.
     let a = Tensor::<2, 3, 6>::new([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
     let b = Tensor::<2, 3, 6>::new([7.0, 9.0, 11.0, 8.0, 10.0, 12.0]);
@@ -115,7 +115,7 @@ fn test_tensordot_identity() {
 
 #[test]
 fn test_tensordot_non_square() {
-    // (1 x 3) . (4 x 3) -> (1 x 4) — b's contracted axis (3) is last.
+    // (1 x 3) . (4 x 3) -> (1 x 4): b's contracted axis (3) is last.
     let a = Tensor::<1, 3, 3>::new([1.0, 2.0, 3.0]);
     let b = Tensor::<4, 3, 12>::new([
         1.0, 5.0, 9.0, 2.0, 6.0, 10.0, 3.0, 7.0, 11.0, 4.0, 8.0, 12.0,
@@ -140,7 +140,7 @@ fn test_tensordot_shape_out_of_sync_with_type() {
 
 #[test]
 fn test_tensordot_2() {
-    // (2 x 2 x 2) . (3 x 2 x 2) -> (2 x 3) — b's contracted axes (2, 2) are
+    // (2 x 2 x 2) . (3 x 2 x 2) -> (2 x 3): b's contracted axes (2, 2) are
     // last, per the shared tensordot_1/2/3 convention.
     let a = Tensor3D::<2, 2, 2, 8>::new([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]);
     let b = Tensor3D::<3, 2, 2, 12>::new([
@@ -225,7 +225,7 @@ fn test_tensordot_3() {
 fn test_tensordot_3_matches_flattened_tensordot_1() {
     // im2col invariant: contracting (C, KH, KW) amounts to a matrix product
     // (N * H_out * W_out, C * KH * KW) . (K, C * KH * KW) on the same
-    // data — b's contracted axis is last on both sides, per the shared
+    // data: b's contracted axis is last on both sides, per the shared
     // tensordot_1/2/3 convention. `a`'s buffer is already in the right
     // order (row-major), `b`'s has to be transposed since it's stored
     // as (K, C, KH, KW).
