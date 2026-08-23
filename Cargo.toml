@@ -1,6 +1,6 @@
 [package]
 name = "frugal_ml"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Ahead-of-time, no_std linear algebra and reverse-mode autodiff for bare-metal microcontrollers: zero heap, zero dynamic dispatch, the computation graph is a type resolved at compile time"
 repository = "https://github.com/matiscodjia/frugal_ml"
