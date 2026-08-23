@@ -9,7 +9,7 @@ use crate::scalar::Scalar;
 /// (M x K) . (N x K) -> (M x N).
 ///
 /// The shared dimension K is enforced by the signature, and `NUMEL_C == M * N`
-/// by `Tensor::new` — both at compile time. `b`'s contracted axis is last
+/// by `Tensor::new`, both at compile time. `b`'s contracted axis is last
 /// (not first) to match `tensordot_2`/`tensordot_3`'s convention: it's what
 /// lets `k` be walked contiguously on both operands below.
 pub fn tensordot_1<
@@ -54,7 +54,7 @@ pub fn tensordot_1<
 /// (M x K1 x K2) . (N x K1 x K2) -> (M x N).
 ///
 /// The shared dimensions K1 and K2 are enforced by the signature, and
-/// `NUMEL_C == M * N` by `Tensor::new` — both at compile time. `b`'s
+/// `NUMEL_C == M * N` by `Tensor::new`, both at compile time. `b`'s
 /// contracted axes are last (not first), matching `tensordot_3`'s
 /// convention: `k2` is walked contiguously on both operands below, same
 /// pattern as `tensordot_3`'s `ch`/`p`/`q`, one rank down.
@@ -103,12 +103,12 @@ pub fn tensordot_2<
 /// Contracts the last three axes of `a` with the last three axes of `b`:
 /// (D0 x D1 x D2 x C x KH x KW) . (K x C x KH x KW) -> (D0 x D1 x D2 x K).
 ///
-/// `a` is any `Rank6` implementor — this is the shared axis-contraction
+/// `a` is any `Rank6` implementor: this is the shared axis-contraction
 /// primitive; see [`crate::sp::cross_correlate2d`] for the im2col
 /// cross-correlation (conv2d forward pass) built on top of it.
 ///
 /// The shared dimensions C, KH and KW are enforced by the signature, and
-/// `NUMEL_C == D0 * D1 * D2 * K` by `Tensor4D::new` — both at compile time.
+/// `NUMEL_C == D0 * D1 * D2 * K` by `Tensor4D::new`, both at compile time.
 #[inline(never)]
 pub fn tensordot_3<
     A,
@@ -150,7 +150,7 @@ where
                         for k in 0..K {
                             // SAFETY: k < K, ch < C, p < KH are guaranteed by the enclosing
                             // for loops' bounds, and b.shape == [K, C, KH, KW] is checked by
-                            // the assert! at the top of the function — same guarantees as
+                            // the assert! at the top of the function, same guarantees as
                             // row_offset(n, c, i) on Tensor4D, a "row" here being (k, ch, p, ·).
                             // Hoisted out of the `q` loop: it used to be recomputed for every
                             // (q, k) in the previous version (a 4-term flat index via

@@ -42,7 +42,7 @@ impl<
             shape: [CHANNELS, ROWS, COLS],
         }
     }
-    /// Builds a tensor from data known upfront — the caller never needs `mut`
+    /// Builds a tensor from data known upfront, the caller never needs `mut`
     /// or a separate load step.
     pub fn new(data: [Scalar; NUMEL]) -> Self
     where
@@ -87,20 +87,20 @@ impl<
     pub fn get_raw_buffer(&self) -> &[Scalar] {
         self.data.as_flat()
     }
-    /// Flat offset of (c, i, 0) into `get_raw_buffer()` — the start of the
+    /// Flat offset of (c, i, 0) into `get_raw_buffer()`: the start of the
     /// contiguous row along the last axis.
     /// # Safety
     /// The caller guarantees c < self.shape[0], i < self.shape[1].
     pub unsafe fn row_offset(self: &Self, c: usize, i: usize) -> usize {
         c * self.channel_stride + i * self.row_stride
     }
-    /// Loads a full, statically-sized buffer — for small tensors and known
+    /// Loads a full, statically-sized buffer, for small tensors and known
     /// data. For a tensor too big to build `[Scalar; NUMEL]` on the stack, see
     /// [`Self::load_slice`] (`no_std`, no `alloc`) or [`Self::from_vec`].
     pub fn load_data(self: &mut Self, data: [Scalar; NUMEL]) -> () {
         self.data.as_flat_mut().copy_from_slice(&data);
     }
-    /// Copies from a runtime-sized slice — never materializes `[Scalar; NUMEL]`
+    /// Copies from a runtime-sized slice, never materializes `[Scalar; NUMEL]`
     /// on the stack.
     pub fn load_slice(self: &mut Self, data: &[Scalar]) -> Result<(), LenMismatch> {
         if data.len() != NUMEL {
@@ -109,7 +109,7 @@ impl<
         self.data.as_flat_mut().copy_from_slice(data);
         Ok(())
     }
-    /// Builds a tensor straight from a `Vec` — no compile-time-sized array
+    /// Builds a tensor straight from a `Vec`, no compile-time-sized array
     /// ever materialized.
     #[cfg(feature = "alloc")]
     pub fn from_vec(data: alloc::vec::Vec<Scalar>) -> Result<Self, alloc::vec::Vec<Scalar>>

@@ -5,10 +5,10 @@ use crate::linalg::tensor::{tensordot_3, Tensor4D};
 use crate::scalar::Scalar;
 
 /// Cross-correlates a (N x C x H x W) sequence with K filters of shape
-/// (C x KH x KW), producing a (N x H_OUT x W_OUT x K) sequence — one new channel
+/// (C x KH x KW), producing a (N x H_OUT x W_OUT x K) sequence: one new channel
 /// per filter.
 ///
-/// The kernel is *not* flipped, so this is a correlation, not a convolution —
+/// The kernel is *not* flipped, so this is a correlation, not a convolution,
 /// the same choice every deep learning framework makes behind the name `conv2d`.
 /// For learned weights the distinction is vacuous, training absorbs the flip.
 /// For the hand-written kernels in [`kernels`](super::kernels) it is not:
@@ -18,14 +18,14 @@ use crate::scalar::Scalar;
 /// `sequence` is the video: N frames of C channels, each H x W. `filters` is the
 /// bank: K filters, each spanning all C input channels over a KH x KW window.
 /// Each filter contracts a whole receptive field down to one value, so the input
-/// channels disappear and the K filters become the output channels — the result
+/// channels disappear and the K filters become the output channels, the result
 /// is channel-last, (N x H_OUT x W_OUT x K).
 ///
 /// The window slides by `stride` in both directions. No padding: the output is
 /// the usual `(H - KH) / stride + 1` by `(W - KW) / stride + 1`.
 ///
-/// `H_OUT`, `W_OUT` and `NUMEL_Y` must come from the call site — deriving them
-/// from `stride` would need `generic_const_exprs` — and are checked by
+/// `H_OUT`, `W_OUT` and `NUMEL_Y` must come from the call site (deriving them
+/// from `stride` would need `generic_const_exprs`) and are checked by
 /// `im2col_view` and `Tensor4D::new`. Everything else is inferred from the
 /// operands, and the shared C, KH, KW are enforced by the signature.
 ///

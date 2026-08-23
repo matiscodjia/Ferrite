@@ -1,7 +1,7 @@
 //! The traits every layer implements, and the combinator that chains them.
 //!
 //! A network is a type: `Then<A, B>` composes two modules, and each trait here
-//! lifts an operation from the leaves to the whole tree — forward/backward
+//! lifts an operation from the leaves to the whole tree: forward/backward
 //! ([`Module`]), gradient shape ([`Params`]), in-place descent ([`Update`]),
 //! and the flat views ([`FlatGrads`], [`Perturb`]) that gradient checking needs.
 

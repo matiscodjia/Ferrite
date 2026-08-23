@@ -9,7 +9,7 @@ use std::vec::Vec;
 /// Extracts one row of `frame` from an (N, C, H, W) npy array as grayscale,
 /// via the standard luminance formula (0.299 R + 0.587 G + 0.114 B) when
 /// `C == 3`, or a straight copy when `C == 1`. Reads only the `W` pixels of
-/// that row from each channel plane — never materialises a whole grayscale
+/// that row from each channel plane, never materialises a whole grayscale
 /// frame, so a caller streaming rows into `ConvStreaming` pays no extra
 /// memory for the conversion.
 ///
@@ -98,7 +98,7 @@ pub fn npy_to_arrays(entries: Vec<DirEntry>) -> std::io::Result<Vec<(String, Npy
 ///
 /// The tensors are `Tensor4DBoxed`: at 1x3x720x720 the input is 6 MB and
 /// the output 4 MB, which the stack cannot carry. Shapes stay const
-/// generics — only the storage location changes, not the static
+/// generics, only the storage location changes, not the static
 /// verification.
 ///
 /// `NUMEL` and `H_OUT`/`W_OUT` aren't derivable from the other parameters

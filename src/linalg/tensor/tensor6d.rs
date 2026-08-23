@@ -6,7 +6,7 @@ use crate::scalar::Scalar;
 ///
 /// The six dimensions are const parameters rather than runtime values, so a
 /// contraction over an implementor keeps checking its shared axes at compile
-/// time — the trait erases ownership, not shape.
+/// time: the trait erases ownership, not shape.
 pub trait Rank6<
     const D0: usize,
     const D1: usize,
@@ -34,7 +34,7 @@ pub trait Rank6<
     /// index this buffer directly with `row_offset(..) + i5` instead of paying for
     /// a full `get_unchecked` (which recomputes every stride term) on each step.
     fn get_raw_buffer(self: &Self) -> &[Scalar];
-    /// Flat offset of (i0, i1, i2, i3, i4, 0) into `get_raw_buffer()` — the start of
+    /// Flat offset of (i0, i1, i2, i3, i4, 0) into `get_raw_buffer()`: the start of
     /// the contiguous row along the last axis.
     /// # Safety
     /// The caller guarantees i0 < D0, i1 < D1, i2 < D2, i3 < D3, i4 < D4.
@@ -282,7 +282,7 @@ impl<
             shape: [BATCHES, GROUPS, CHANNELS, DEPTH, ROWS, COLS],
         }
     }
-    /// Builds a tensor from data known upfront — the caller never needs `mut`
+    /// Builds a tensor from data known upfront, the caller never needs `mut`
     /// or a separate load step.
     pub fn new(data: [Scalar; NUMEL]) -> Self
     where
@@ -376,13 +376,13 @@ impl<
             + j * self.col_stride;
         *self.data.get_unchecked_mut(flat_index) = value;
     }
-    /// Loads a full, statically-sized buffer — for small tensors and known
+    /// Loads a full, statically-sized buffer, for small tensors and known
     /// data. For a tensor too big to build `[Scalar; NUMEL]` on the stack, see
     /// [`Self::load_slice`] (`no_std`, no `alloc`) or [`Self::from_vec`].
     pub fn load_data(self: &mut Self, data: [Scalar; NUMEL]) -> () {
         self.data.as_flat_mut().copy_from_slice(&data);
     }
-    /// Copies from a runtime-sized slice — never materializes `[Scalar; NUMEL]`
+    /// Copies from a runtime-sized slice, never materializes `[Scalar; NUMEL]`
     /// on the stack.
     pub fn load_slice(self: &mut Self, data: &[Scalar]) -> Result<(), LenMismatch> {
         if data.len() != NUMEL {
@@ -391,7 +391,7 @@ impl<
         self.data.as_flat_mut().copy_from_slice(data);
         Ok(())
     }
-    /// Builds a tensor straight from a `Vec` — no compile-time-sized array
+    /// Builds a tensor straight from a `Vec`, no compile-time-sized array
     /// ever materialized.
     #[cfg(feature = "alloc")]
     pub fn from_vec(data: alloc::vec::Vec<Scalar>) -> Result<Self, alloc::vec::Vec<Scalar>>

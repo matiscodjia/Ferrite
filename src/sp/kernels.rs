@@ -17,7 +17,7 @@ type Taps3x3 = [Scalar; 9];
 ///
 /// The depth axis is what makes these kernels usable by `cross_correlate2d`: a filter must
 /// span every input channel, because the contraction sums over them. Replicating
-/// the same 2D taps means the filter treats all channels alike — the C-channel
+/// the same 2D taps means the filter treats all channels alike: the C-channel
 /// response is the sum of the per-channel responses.
 fn replicate<const C: usize, const NUMEL: usize>(
     taps: &Taps3x3,
@@ -80,7 +80,7 @@ impl Sobel3D {
 }
 
 /// Stacks K kernels of shape (C x KH x KW) into the (K x C x KH x KW) bank that
-/// `cross_correlate2d` expects — kernel `k` becomes output channel `k`.
+/// `cross_correlate2d` expects: kernel `k` becomes output channel `k`.
 ///
 /// This is the one place the kernels are copied: `cross_correlate2d` then reads the bank in
 /// place. `NUMEL_BANK == K * C * KH * KW` is checked by `Tensor4D::new`.

@@ -1,20 +1,20 @@
-//! `conv_shape!` — derives every size `im2col_view`/`tensordot_3`/
+//! `conv_shape!` derives every size `im2col_view`/`tensordot_3`/
 //! `cross_correlate2d` need (`H_OUT`, `W_OUT`, `NUMEL_X`, `NUMEL_F`, `NUMEL_Y`)
 //! from the handful of numbers that actually change when you swap
 //! resolutions. Without it, changing one resolution means recomputing and
 //! retyping those constants by hand at every `Tensor4D<...>` call site that
-//! touches the frame, the im2col view and the output — this macro shrinks
+//! touches the frame, the im2col view and the output; this macro shrinks
 //! that to one call site.
 
 /// Generates a module of `usize` constants describing a convolution/
 /// cross-correlation shape: `H_OUT`, `W_OUT` (output spatial size, stride
-/// `stride`, no padding — same formula `im2col_view` checks internally) and
+/// `stride`, no padding, same formula `im2col_view` checks internally) and
 /// `NUMEL_X`/`NUMEL_F`/`NUMEL_Y`, the flat element counts `Tensor4D::<.., NUMEL>`
 /// and `tensordot_3`/`cross_correlate2d` expect for the input sequence, the
 /// filter bank and the output.
 ///
 /// `N` (batch), `C` (channels) and `K` (filter count) default to `1` when
-/// omitted — the common case of exploring a single-frame, single-channel
+/// omitted: the common case of exploring a single-frame, single-channel
 /// resolution with one filter.
 ///
 /// ```
@@ -38,7 +38,7 @@
 /// assert_eq!(rgb64::NUMEL_Y, 15376);
 /// ```
 ///
-/// The generated constants plug straight into the existing types — no new
+/// The generated constants plug straight into the existing types, no new
 /// abstraction to learn:
 ///
 /// ```

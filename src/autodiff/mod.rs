@@ -1,6 +1,6 @@
 //! Static reverse-mode autodiff.
 //!
-//! The computation graph is the type of the network, resolved at compile time —
+//! The computation graph is the type of the network, resolved at compile time:
 //! there is no tape, no allocation, and no dynamic dispatch. [`core`] holds the
 //! traits and the `Then` combinator, [`layers`] the building blocks, [`optim`]
 //! the descent, and [`grad_check`] the finite-difference cross-check.

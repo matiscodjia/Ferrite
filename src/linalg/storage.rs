@@ -25,7 +25,7 @@ pub unsafe trait Buffer: Sized {
     /// Number of scalars in the buffer, across every rank.
     const LEN: usize;
 
-    /// Builds a zeroed buffer *in place* — so on the caller's stack.
+    /// Builds a zeroed buffer *in place*, so on the caller's stack.
     /// Reserved for `StackStorage`: heap storage must never go through this.
     fn zeroed_inline() -> Self;
 
@@ -58,7 +58,7 @@ unsafe impl<B: Buffer, const N: usize> Buffer for [B; N] {
         core::array::from_fn(|_| B::zeroed_inline())
     }
     fn as_flat(&self) -> &[Scalar] {
-        // SAFETY: see the trait invariant — `Self::LEN` contiguous scalars
+        // SAFETY: see the trait invariant: `Self::LEN` contiguous scalars
         // starting at the array's address, living as long as `self` does.
         unsafe { core::slice::from_raw_parts(self.as_ptr() as *const Scalar, Self::LEN) }
     }
@@ -158,7 +158,7 @@ mod heap {
             if layout.size() == 0 {
                 // `alloc_zeroed` forbids a zero size; an empty buffer is a
                 // ZST, a non-null aligned pointer is enough.
-                // SAFETY: aligned, non-null pointer, zero size — the valid
+                // SAFETY: aligned, non-null pointer, zero size: the valid
                 // representation of an owned ZST.
                 return Self(unsafe { Box::from_raw(core::ptr::NonNull::dangling().as_ptr()) });
             }
@@ -170,7 +170,7 @@ mod heap {
                 handle_alloc_error(layout);
             }
             // SAFETY: `ptr` comes from the global allocator with `B`'s
-            // layout, and points at a valid `B` — `Box` can take ownership.
+            // layout, and points at a valid `B`: `Box` can take ownership.
             Self(unsafe { Box::from_raw(ptr) })
         }
     }
