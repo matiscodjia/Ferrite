@@ -66,7 +66,7 @@ fn test_view_indexing_not_valid() {
 #[test]
 #[should_panic]
 fn test_indexing_axis_overflow() {
-    // 2 lignes, 3 colonnes : la colonne 3 sort de l'axe sans sortir du buffer
+    // 2 rows, 3 columns: column 3 is out of the axis without leaving the buffer
     let m = Tensor::<2, 3, 6>::new([0.0; 6]);
     m.get(0, 3);
 }
@@ -81,7 +81,7 @@ fn test_setting_axis_overflow() {
 #[test]
 #[should_panic]
 fn test_indexing_axis_overflow_transposed() {
-    // apres transpose la shape est (3, 2) : la colonne 2 sort de l'axe
+    // after transpose the shape is (3, 2): column 2 is out of the axis
     let mut m = Tensor::<2, 3, 6>::new([0.0; 6]);
     m.transpose();
     m.get(0, 2);
@@ -131,7 +131,7 @@ fn test_tensordot_non_square() {
 #[test]
 #[should_panic]
 fn test_tensordot_shape_out_of_sync_with_type() {
-    // transpose ne change que la shape runtime : le type annonce toujours (2, 3)
+    // transpose only changes the runtime shape: the type still says (2, 3)
     let mut a = Tensor::<2, 3, 6>::new([0.0; 6]);
     a.transpose();
     let b = Tensor::<2, 3, 6>::new([0.0; 6]);
@@ -158,8 +158,8 @@ fn test_tensordot_2() {
 
 #[test]
 fn test_tensordot_2_matches_flattened_tensordot_1() {
-    // contracter (K1, K2) revient a contracter un seul axe K1 * K2 sur les
-    // memes donnees : c'est l'invariant sur lequel repose l'aplatissement.
+    // contracting (K1, K2) is the same as contracting a single K1 * K2 axis on the
+    // same data: this is the invariant the flattening relies on.
     let a_data = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
     // b's contracted axes are last, per the shared tensordot_1/2/3
     // convention.
@@ -184,7 +184,7 @@ fn test_tensordot_2_matches_flattened_tensordot_1() {
 
 #[test]
 fn test_tensordot_2_single_inner_axis() {
-    // K2 = 1 : la contraction sur deux axes degenere en produit matriciel.
+    // K2 = 1: the two-axis contraction degenerates into a matrix product.
     // b's contracted axes (3, 1) are last, per the shared convention.
     let a = Tensor3D::<2, 3, 1, 6>::new([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
     let b = Tensor3D::<2, 3, 1, 6>::new([7.0, 9.0, 11.0, 8.0, 10.0, 12.0]);
@@ -199,10 +199,10 @@ fn test_tensordot_2_single_inner_axis() {
 #[test]
 fn test_tensordot_3() {
     // (1 x 1 x 2 x 2 x 2 x 2) . (2 x 2 x 2 x 2) -> (1 x 1 x 2 x 2)
-    // deux patchs de 8 valeurs, deux filtres de 8 valeurs : le resultat est la
-    // matrice de Gram entre patchs et filtres, calculee a la main ci-dessous.
+    // two patches of 8 values, two filters of 8 values: the result is the
+    // Gram matrix between patches and filters, computed by hand below.
     // patch(0,0) = [1..8], patch(0,1) = [9..16]
-    // filtre(0)  = [1..8], filtre(1)  = [9..16]
+    // filter(0)  = [1..8], filter(1)  = [9..16]
     let mut data = [0.0; 16];
     for k in 0..16 {
         data[k] = (k + 1) as Scalar;
@@ -215,7 +215,7 @@ fn test_tensordot_3() {
     assert_eq!(204.0, c.get(0, 0, 0, 0));
     // 1*9 + 2*10 + ... + 8*16 = 492
     assert_eq!(492.0, c.get(0, 0, 0, 1));
-    // 9*1 + 10*2 + ... + 16*8 = 492 : le produit scalaire est symetrique
+    // 9*1 + 10*2 + ... + 16*8 = 492: the dot product is symmetric
     assert_eq!(492.0, c.get(0, 0, 1, 0));
     // 9*9 + 10*10 + ... + 16*16 = 1292
     assert_eq!(1292.0, c.get(0, 0, 1, 1));
@@ -223,12 +223,12 @@ fn test_tensordot_3() {
 
 #[test]
 fn test_tensordot_3_matches_flattened_tensordot_1() {
-    // invariant im2col : contracter (C, KH, KW) revient a un produit matriciel
-    // (N * H_out * W_out, C * KH * KW) . (K, C * KH * KW) sur les memes
-    // donnees — b's contracted axis is last on both sides, per the shared
-    // tensordot_1/2/3 convention. Le buffer de `a` est deja dans le bon
-    // ordre (row-major), celui de `b` doit etre transpose puisqu'il est
-    // stocke en (K, C, KH, KW).
+    // im2col invariant: contracting (C, KH, KW) amounts to a matrix product
+    // (N * H_out * W_out, C * KH * KW) . (K, C * KH * KW) on the same
+    // data — b's contracted axis is last on both sides, per the shared
+    // tensordot_1/2/3 convention. `a`'s buffer is already in the right
+    // order (row-major), `b`'s has to be transposed since it's stored
+    // as (K, C, KH, KW).
     const N: usize = 2;
     const H_OUT: usize = 2;
     const W_OUT: usize = 1;
@@ -273,8 +273,8 @@ fn test_tensordot_3_matches_flattened_tensordot_1() {
 
 #[test]
 fn test_tensordot_3_pointwise_filters() {
-    // C = KH = KW = 1 : la contraction degenere en produit exterieur, chaque
-    // pixel est simplement multiplie par chacun des K scalaires du filtre.
+    // C = KH = KW = 1: the contraction degenerates into an outer product,
+    // each pixel is simply multiplied by each of the filter's K scalars.
     let a = Tensor6D::<2, 1, 2, 1, 1, 1, 4>::new([1.0, 2.0, 3.0, 4.0]);
     let b = Tensor4D::<3, 1, 1, 1, 3>::new([5.0, 6.0, 7.0]);
 
@@ -400,7 +400,7 @@ fn test_setting6d_axis_overflow() {
 
 #[test]
 fn test_im2col_view_full_window() {
-    // KH x KW = H x W : une seule position, la vue redonne le tenseur d'entree
+    // KH x KW = H x W: a single position, the view just gives back the input tensor
     let m = Tensor4D::<1, 1, 2, 2, 4>::new([1.0, 2.0, 3.0, 4.0]);
 
     let v = m.im2col_view::<1, 1, 2, 2>(1);
@@ -413,7 +413,7 @@ fn test_im2col_view_full_window() {
 
 #[test]
 fn test_im2col_view_sliding_window() {
-    // 3x3, fenetre 2x2, stride 1 -> 4 patchs qui se recouvrent
+    // 3x3, 2x2 window, stride 1 -> 4 overlapping patches
     // 1 2 3
     // 4 5 6
     // 7 8 9
@@ -425,16 +425,16 @@ fn test_im2col_view_sliding_window() {
     assert_eq!(2.0, v.get(0, 0, 0, 0, 0, 1));
     assert_eq!(4.0, v.get(0, 0, 0, 0, 1, 0));
     assert_eq!(5.0, v.get(0, 0, 0, 0, 1, 1));
-    // patch (0, 1) : decale d'une colonne
+    // patch (0, 1): shifted by one column
     assert_eq!(2.0, v.get(0, 0, 1, 0, 0, 0));
     assert_eq!(6.0, v.get(0, 0, 1, 0, 1, 1));
-    // patch (1, 0) : decale d'une ligne
+    // patch (1, 0): shifted by one row
     assert_eq!(4.0, v.get(0, 1, 0, 0, 0, 0));
     assert_eq!(8.0, v.get(0, 1, 0, 0, 1, 1));
     // patch (1, 1)
     assert_eq!(5.0, v.get(0, 1, 1, 0, 0, 0));
     assert_eq!(9.0, v.get(0, 1, 1, 0, 1, 1));
-    // le pixel central appartient aux quatre fenetres : la vue alias, elle ne copie pas
+    // the center pixel belongs to all four windows: the view aliases, it doesn't copy
     assert_eq!(5.0, v.get(0, 0, 0, 0, 1, 1));
     assert_eq!(5.0, v.get(0, 0, 1, 0, 1, 0));
     assert_eq!(5.0, v.get(0, 1, 0, 0, 0, 1));
@@ -443,7 +443,7 @@ fn test_im2col_view_sliding_window() {
 
 #[test]
 fn test_im2col_view_stride_2() {
-    // 4x4, fenetre 2x2, stride 2 -> 4 patchs disjoints
+    // 4x4, 2x2 window, stride 2 -> 4 disjoint patches
     //  1  2  3  4
     //  5  6  7  8
     //  9 10 11 12
@@ -467,7 +467,7 @@ fn test_im2col_view_stride_2() {
 
 #[test]
 fn test_im2col_view_strides_invariant() {
-    // l'invariant complet de la vue, sur tous les axes a la fois :
+    // the view's full invariant, across all axes at once:
     // v.get(n, i, j, c, p, q) == m.get(n, c, i * stride + p, j * stride + q)
     const N: usize = 2;
     const C: usize = 2;
@@ -516,7 +516,7 @@ fn test_im2col_view_strides_invariant() {
 #[test]
 #[should_panic]
 fn test_im2col_view_wrong_output_size() {
-    // 3x3 avec une fenetre 2x2 et stride 1 donne 2x2, pas 3x3
+    // 3x3 with a 2x2 window and stride 1 gives 2x2, not 3x3
     let m = Tensor4D::<1, 1, 3, 3, 9>::new([0.0; 9]);
     let _v = m.im2col_view::<3, 3, 2, 2>(1);
 }
@@ -540,23 +540,23 @@ fn test_im2col_view_null_stride() {
 fn test_im2col_view_axis_overflow() {
     let m = Tensor4D::<1, 1, 3, 3, 9>::new([0.0; 9]);
     let v = m.im2col_view::<2, 2, 2, 2>(1);
-    // W_OUT vaut 2 : la troisieme position de fenetre n'existe pas
+    // W_OUT is 2: the third window position doesn't exist
     v.get(0, 0, 2, 0, 0, 0);
 }
 
 #[test]
 fn test_im2col_view_feeds_tensordot_3() {
-    // cross-correlation 2D de bout en bout : im2col puis contraction sur (C, KH, KW)
+    // end-to-end 2D cross-correlation: im2col then contraction on (C, KH, KW)
     // 1 2 3
     // 4 5 6
     // 7 8 9
     let m = Tensor4D::<1, 1, 3, 3, 9>::new([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]);
     let v = m.im2col_view::<2, 2, 2, 2>(1);
 
-    // filtre 0 : diagonale (a + d), filtre 1 : somme du patch
+    // filter 0: diagonal (a + d), filter 1: sum of the patch
     let filters = Tensor4D::<2, 1, 2, 2, 8>::new([1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
 
-    // la vue est contractee telle quelle : aucun tenseur de patchs intermediaire
+    // the view is contracted as-is: no intermediate patch tensor
     let out: Tensor4D<1, 2, 2, 2, 8> = tensordot_3(&v, &filters);
     // diagonales : 1+5, 2+6, 4+8, 5+9
     assert_eq!(6.0, out.get(0, 0, 0, 0));
@@ -572,8 +572,8 @@ fn test_im2col_view_feeds_tensordot_3() {
 
 #[test]
 fn test_tensordot_3_view_matches_materialised() {
-    // contracter la vue doit donner exactement le meme resultat que contracter
-    // le tenseur de patchs recopie a la main, batches et canaux compris
+    // contracting the view must give exactly the same result as contracting
+    // the patch tensor copied out by hand, batches and channels included
     const N: usize = 2;
     const C: usize = 2;
     const H_OUT: usize = 2;
@@ -622,12 +622,12 @@ fn test_tensordot_3_view_matches_materialised() {
             }
         }
     }
-    // et le resultat n'est pas trivialement nul partout
+    // and the result isn't trivially zero everywhere
     assert_ne!(0.0, from_view.get(0, 0, 0, 0));
 }
 
-/// Le lieu de stockage ne doit rien changer au résultat : même entrée, même
-/// contraction, une fois sur la pile et une fois sur le tas.
+/// The storage location must not change the result: same input, same
+/// contraction, once on the stack and once on the heap.
 #[cfg(feature = "alloc")]
 #[test]
 fn test_storage_agnostic_cross_correlation() {
@@ -665,13 +665,13 @@ fn test_storage_agnostic_cross_correlation() {
 
     assert_eq!(on_stack.get_shape(), on_heap.get_shape());
     assert_eq!(on_stack.get_data(), on_heap.get_data());
-    // et le resultat n'est pas trivialement nul partout
+    // and the result isn't trivially zero everywhere
     assert_ne!(0.0, on_heap.get(0, 0, 0, 0));
 }
 
-/// Croiser les stockages dans une même contraction : entrée tas, filtres pile,
-/// sortie pile. Si ça compile et que ça donne la même chose, `Storage` ne fuit
-/// pas dans le noyau de calcul.
+/// Cross storages within the same contraction: heap input, stack filters,
+/// stack output. If it compiles and gives the same result, `Storage`
+/// doesn't leak into the compute core.
 #[cfg(feature = "alloc")]
 #[test]
 fn test_mixed_storage_operands() {

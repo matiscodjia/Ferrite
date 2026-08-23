@@ -93,16 +93,17 @@ pub fn npy_to_arrays(entries: Vec<DirEntry>) -> std::io::Result<Vec<(String, Npy
     Ok(couples)
 }
 
-/// Un point de mesure du sweep : charge le couple (vidéo, banc de filtres),
-/// contracte, écrit le résultat.
+/// One measurement point in the sweep: loads the (video, filter bank) pair,
+/// contracts, writes the result.
 ///
-/// Les tenseurs sont `Tensor4DBoxed` : à 1x3x720x720 l'entrée fait 6 Mo et la
-/// sortie 4 Mo, ce que la pile ne porte pas. Les shapes restent des const
-/// generics — seul le lieu de stockage change, pas la vérification statique.
+/// The tensors are `Tensor4DBoxed`: at 1x3x720x720 the input is 6 MB and
+/// the output 4 MB, which the stack cannot carry. Shapes stay const
+/// generics — only the storage location changes, not the static
+/// verification.
 ///
-/// Les `NUMEL` et les `H_OUT`/`W_OUT` ne sont pas dérivables des autres
-/// paramètres sans `generic_const_exprs`, d'où leur passage explicite ; ils sont
-/// vérifiés à la compilation par `Tensor4D::new` et à l'exécution par
+/// `NUMEL` and `H_OUT`/`W_OUT` aren't derivable from the other parameters
+/// without `generic_const_exprs`, hence passing them explicitly; they are
+/// checked at compile time by `Tensor4D::new` and at runtime by
 /// `im2col_view`.
 macro_rules! bench_case {
     (
@@ -133,7 +134,7 @@ macro_rules! bench_case {
 pub fn compute_cross_corr_output_npy(couples: Vec<(String, NpyArray, NpyArray)>) -> () {
     for (key, vid, fil) in couples {
         match (vid.shape.as_slice(), fil.shape.as_slice()) {
-            // --- variation de H/W ---
+            // --- H/W variation ---
             ([1, 3, 32, 32], [2, 3, 3, 3]) => bench_case!(
                 vid, fil, key,
                 video: [1, 3, 32, 32] = 3072,
@@ -170,7 +171,7 @@ pub fn compute_cross_corr_output_npy(couples: Vec<(String, NpyArray, NpyArray)>)
                 stride: 1,
             ),
 
-            // --- variation de N (batch) ---
+            // --- N (batch) variation ---
             ([2, 3, 128, 128], [2, 3, 3, 3]) => bench_case!(
                 vid, fil, key,
                 video: [2, 3, 128, 128] = 98304,
@@ -207,7 +208,7 @@ pub fn compute_cross_corr_output_npy(couples: Vec<(String, NpyArray, NpyArray)>)
                 stride: 1,
             ),
 
-            // --- variation de C (canaux d'entrée) ---
+            // --- C (input channels) variation ---
             ([1, 1, 128, 128], [2, 1, 3, 3]) => bench_case!(
                 vid, fil, key,
                 video: [1, 1, 128, 128] = 16384,
@@ -230,7 +231,7 @@ pub fn compute_cross_corr_output_npy(couples: Vec<(String, NpyArray, NpyArray)>)
                 stride: 1,
             ),
 
-            // --- variation de K (nombre de filtres) ---
+            // --- K (filter count) variation ---
             ([1, 3, 128, 128], [1, 3, 3, 3]) => bench_case!(
                 vid, fil, key,
                 video: [1, 3, 128, 128] = 49152,

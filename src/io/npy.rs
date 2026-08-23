@@ -13,7 +13,7 @@ pub struct NpyArray {
 
 pub fn read_npy(path: &std::path::Path) -> Result<NpyArray, std::io::Error> {
     let mut file = File::open(path)?;
-    // 1. lire les 6 octets magic, verifier qu'ils valent \x93NUMPY
+    // 1. read the 6 magic bytes, check they equal \x93NUMPY
     let mut magic = [0u8; 6];
     file.read_exact(&mut magic)?;
     if &magic != b"\x93NUMPY" {
@@ -22,7 +22,7 @@ pub fn read_npy(path: &std::path::Path) -> Result<NpyArray, std::io::Error> {
             "Invalid magic field",
         ));
     }
-    // 2. lire version (2 octets) - tu peux l'ignorer si 1.0, ou erreur sinon
+    // 2. read version (2 bytes) - fine to ignore if 1.0, error otherwise
     let mut version = [0u8; 2];
     file.read_exact(&mut version)?;
     let (major, _) = (version[0], version[1]);
@@ -32,13 +32,13 @@ pub fn read_npy(path: &std::path::Path) -> Result<NpyArray, std::io::Error> {
             "Invalid version field",
         ));
     }
-    // 3. lire la longueur d'en-tete (2 octets, little-endian u16)
+    // 3. read the header length (2 bytes, little-endian u16)
     let mut header_len_bytes = [0u8; 2];
     file.read_exact(&mut header_len_bytes)?;
     let header_len: usize = u16::from_le_bytes(header_len_bytes) as usize;
     let mut header_buffer = vec![0u8; header_len];
 
-    // 4. lire ce nombre d'octets, les interpreter comme une string ASCII
+    // 4. read that many bytes, interpret them as an ASCII string
     file.read_exact(&mut header_buffer)?;
     let header_result = String::from_utf8(header_buffer);
 
@@ -52,8 +52,8 @@ pub fn read_npy(path: &std::path::Path) -> Result<NpyArray, std::io::Error> {
         }
     };
 
-    // 5. en extraire descr, fortran_order, shape (parsing texte simple,
-    //    pas besoin d'un vrai parseur Python — cherche les sous-chaines)
+    // 5. extract descr, fortran_order, shape from it (plain text parsing,
+    //    no real Python parser needed — just look for substrings)
 
     let descr_re = Regex::new(r"'descr': '([^']+)'").unwrap();
     let fortran_re = Regex::new(r"'fortran_order': (True|False)").unwrap();
@@ -71,7 +71,7 @@ pub fn read_npy(path: &std::path::Path) -> Result<NpyArray, std::io::Error> {
         .captures(&header_str)
         .and_then(|c| c.get(1))
         .map(|m| m.as_str());
-    // 6. verifier descr == "<f4" et fortran_order == False, sinon Err
+    // 6. check descr == "<f4" and fortran_order == False, else Err
     if descr != Some("<f4") {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
@@ -98,7 +98,7 @@ pub fn read_npy(path: &std::path::Path) -> Result<NpyArray, std::io::Error> {
         .map(|s| s.trim().parse::<usize>().unwrap())
         .collect();
 
-    // 7. lire le reste du fichier, le reinterpreter comme des f32 little-endian
+    // 7. read the rest of the file, reinterpret it as little-endian f32
     let mut data = Vec::new();
     file.read_to_end(&mut data)?;
     let floats: Vec<f32> = data
@@ -127,7 +127,7 @@ pub fn write_npy(
     // 2. Version
     file.write_all(&[1u8, 0u8])?;
 
-    // 3. Header dict (SANS \n)
+    // 3. Header dict (WITHOUT \n)
     let shape_str = shape
         .iter()
         .map(|s| s.to_string())
@@ -138,7 +138,7 @@ pub fn write_npy(
         shape_str
     );
 
-    // 4. Calculer padding pour aligner sur 64 octets
+    // 4. Compute padding to align on 64 bytes
     // Total = 10 (magic + version + len) + header_len + padding + 1 (\n) = 64k
     let header_len = header_dict.len();
     let total_with_newline = header_len + 1;
@@ -148,7 +148,7 @@ pub fn write_npy(
     // 5. Write header length
     file.write_all(&(aligned as u16).to_le_bytes())?;
 
-    // 6. Write header dict + padding + \n (dans cet ordre!)
+    // 6. Write header dict + padding + \n (in that order!)
     file.write_all(header_dict.as_bytes())?;
     file.write_all(&vec![b' '; padding])?;
     file.write_all(b"\n")?;

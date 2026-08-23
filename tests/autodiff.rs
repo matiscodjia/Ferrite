@@ -80,7 +80,7 @@ fn test_convergence() {
     println!("loss finale : {final_loss:.6}");
     assert!(
         final_loss < 0.05,
-        "réseau n'a pas convergé : loss finale = {final_loss:.6}"
+        "network did not converge: final loss = {final_loss:.6}"
     );
 }
 
@@ -150,7 +150,7 @@ fn test_classifier() {
         }
     }
     println!("accuracy : {}/{}", correct, dataset.len());
-    assert_eq!(correct, dataset.len(), "le classifieur n'a pas convergé");
+    assert_eq!(correct, dataset.len(), "the classifier did not converge");
 }
 
 // cargo test test_iris -- --nocapture

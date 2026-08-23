@@ -144,7 +144,7 @@ impl<
     > TensorView6D<'a, N, C, H, W, H_OUT, W_OUT, KH, KW>
 {
     /// # Safety
-    /// L'appelant garantit que n < N, i < H_OUT, j < W_OUT, c < C, p < KH, q < KW.
+    /// The caller guarantees n < N, i < H_OUT, j < W_OUT, c < C, p < KH, q < KW.
     pub unsafe fn get_unchecked(
         &self,
         n: usize,

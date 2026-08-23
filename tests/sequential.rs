@@ -105,7 +105,7 @@ fn seq_training_step_decreases_loss_leaky_relu() {
 
     assert!(
         loss_after < loss_before * 0.5,
-        "la loss devrait avoir significativement baissé : {loss_before:.4} → {loss_after:.4}"
+        "loss should have dropped significantly: {loss_before:.4} → {loss_after:.4}"
     );
 }
 
@@ -131,7 +131,7 @@ fn grad_check_linear_tanh_linear() {
 
     assert!(
         result.max_relative_error < 1e-2,
-        "gradient check échoué : max erreur relative = {:.2e}",
+        "gradient check failed: max relative error = {:.2e}",
         result.max_relative_error
     );
 }

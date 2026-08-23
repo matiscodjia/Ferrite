@@ -1,6 +1,6 @@
 #![no_std] // We are officially an embedded library now.
 
-// Sonde : ne sert qu'aux stockages tas (gros tenseurs de benchmark).
+// Probe: only used for heap-backed storage (large benchmark tensors).
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
@@ -9,8 +9,8 @@ extern crate alloc;
 extern crate std; // Use full std for tests and dev on MacOS.
 
 pub mod autodiff;
-/// Sonde hôte : lecture/écriture .npy et pilotage des benchmarks. Rien ici n'est
-/// destiné à une cible embarquée, d'où le gate sur `std`.
+/// Host-only probe: .npy reading/writing and benchmark driving. Nothing
+/// here targets an embedded device, hence the `std` gate.
 #[cfg(feature = "std")]
 pub mod io;
 pub mod linalg;
