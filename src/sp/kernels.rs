@@ -45,8 +45,8 @@ impl Gaussian3D {
     const TAPS: Taps3x3 = [1.0, 2.0, 1.0, 2.0, 4.0, 2.0, 1.0, 2.0, 1.0];
 
     /// ```
-    /// use ferrite::sp::Gaussian3D;
-    /// use ferrite::linalg::tensor::Tensor3D;
+    /// use frugal_ml::sp::Gaussian3D;
+    /// use frugal_ml::linalg::tensor::Tensor3D;
     ///
     /// let k: Tensor3D<1, 3, 3, 9> = Gaussian3D::kernel();
     /// assert_eq!(0.25, k.get(0, 1, 1)); // 4/16

@@ -1,8 +1,8 @@
 [package]
-name = "ferrite"
+name = "frugal_ml"
 version = "0.1.0"
 edition = "2021"
-description = "Static deep learning framework for bare-metal microcontrollers — no_std, no heap, no runtime"
+description = "Ahead-of-time, no_std linear algebra and reverse-mode autodiff for bare-metal microcontrollers — zero heap, zero dynamic dispatch, the computation graph is a type resolved at compile time"
 repository = "https://github.com/matiscodjia/Ferrite"
 license = "MIT"
 keywords = ["no-std", "embedded", "deep-learning", "neural-network", "microcontroller"]
@@ -39,7 +39,7 @@ defmt = ["dep:defmt"]
 # que sur hôte, d'où `required-features` — sans quoi `--no-default-features`
 # essaie de le compiler pour Cortex-M.
 [[bin]]
-name = "ferrite"
+name = "frugal_ml"
 path = "src/main.rs"
 required-features = ["std"]
 

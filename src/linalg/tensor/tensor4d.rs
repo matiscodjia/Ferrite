@@ -2,9 +2,9 @@ use super::tensor6d::TensorView6D;
 use crate::linalg::storage::{Buffer, LenMismatch, OwnedStorage, StackStorage, Storage};
 use crate::scalar::Scalar;
 
-/// `S` détermine où vit le buffer — pile par défaut, donc les instanciations
-/// existantes (`Tensor4D::<1, 3, 32, 32, 3072>`) sont inchangées. Voir
-/// [`Tensor4DBoxed`] pour la variante tas.
+/// `S` determines where the buffer lives — the stack by default, so
+/// existing instantiations (`Tensor4D::<1, 3, 32, 32, 3072>`) are
+/// unchanged. See [`Tensor4DBoxed`] for the heap variant.
 pub struct Tensor4D<
     const BATCHES: usize,
     const CHANNELS: usize,
@@ -21,8 +21,8 @@ pub struct Tensor4D<
     pub(super) shape: [usize; 4],
 }
 
-/// `Tensor4D` dont le buffer vit sur le tas — pour les shapes que la pile ne
-/// peut pas porter (benchmarking de montée en charge).
+/// `Tensor4D` whose buffer lives on the heap — for shapes the stack
+/// cannot carry (scaling-up benchmarks).
 #[cfg(feature = "alloc")]
 pub type Tensor4DBoxed<
     const BATCHES: usize,
@@ -172,11 +172,11 @@ impl<
     pub fn load_data(self: &mut Self, data: [Scalar; NUMEL]) -> () {
         *self.data = data
     }
-    /// Charge un buffer de taille dynamique, sans jamais matérialiser
-    /// `[Scalar; NUMEL]` sur la pile — la porte d'entrée des gros tenseurs.
+    /// Loads a dynamically-sized buffer, never materializing
+    /// `[Scalar; NUMEL]` on the stack — the entry point for large tensors.
     ///
-    /// Rend le `Vec` intact si sa longueur ne correspond pas à `NUMEL`, plutôt
-    /// que de le déverser dans un message de panique.
+    /// Hands the `Vec` back intact if its length doesn't match `NUMEL`,
+    /// rather than dumping it into a panic message.
     #[cfg(feature = "alloc")]
     pub fn load_vec(
         self: &mut Self,

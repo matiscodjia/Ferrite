@@ -130,8 +130,8 @@ pub fn tensordot_3<
 where
     A: Rank6<N, H_OUT, W_OUT, C, KH, KW>,
     SB: Storage<[Scalar; NUMEL_B]>,
-    // Le résultat peut être aussi gros que l'entrée (1x718x718x2 ≈ 4 Mo) : son
-    // stockage doit pouvoir être choisi, sinon l'overflow revient par la sortie.
+    // The result can be as large as the input (1x718x718x2 ≈ 4 MB): its
+    // storage needs to be choosable, or the overflow just comes back via the output.
     SC: OwnedStorage<[Scalar; NUMEL_C]>,
 {
     assert!(a.shape() == [N, H_OUT, W_OUT, C, KH, KW] && b.shape == [K, C, KH, KW]);
@@ -143,24 +143,24 @@ where
                 let mut sums: [Scalar; K] = [0.0; K];
                 for ch in 0..C {
                     for p in 0..KH {
-                        // SAFETY: n < N, i < H_OUT, j < W_OUT, ch < C, p < KH sont garantis
-                        // par les bornes des boucles for englobantes.
+                        // SAFETY: n < N, i < H_OUT, j < W_OUT, ch < C, p < KH are guaranteed
+                        // by the enclosing for loops' bounds.
                         let a_base = unsafe { a.row_offset(n, i, j, ch, p) };
                         let a_row = a.get_raw_buffer();
                         for k in 0..K {
-                            // SAFETY: k < K, ch < C, p < KH sont garantis par les bornes des
-                            // boucles for englobantes, et b.shape == [K, C, KH, KW] est
-                            // vérifié par l'assert! en tête de fonction — mêmes garanties que
-                            // row_offset(n, c, i) sur Tensor4D, une "ligne" ici étant (k, ch, p, ·).
-                            // Hissé hors de la boucle `q` : c'était recalculé à chaque (q, k)
-                            // dans l'ancienne version (indice plat à 4 termes de
-                            // `get_unchecked(k, ch, p, q)`), maintenant une seule fois par k.
+                            // SAFETY: k < K, ch < C, p < KH are guaranteed by the enclosing
+                            // for loops' bounds, and b.shape == [K, C, KH, KW] is checked by
+                            // the assert! at the top of the function — same guarantees as
+                            // row_offset(n, c, i) on Tensor4D, a "row" here being (k, ch, p, ·).
+                            // Hoisted out of the `q` loop: it used to be recomputed for every
+                            // (q, k) in the previous version (a 4-term flat index via
+                            // `get_unchecked(k, ch, p, q)`), now computed once per k.
                             let b_base = unsafe { b.row_offset(k, ch, p) };
                             for q in 0..KW {
-                                // SAFETY: KW a un stride de 1 dans tout Rank6 et sur b (dernier
-                                // axe toujours contigu), donc a_base + q et b_base + q sont les
-                                // indices plats de (n, i, j, ch, p, q) et (k, ch, p, q) ; q < KW
-                                // est garanti par la boucle for englobante.
+                                // SAFETY: KW has stride 1 across all of Rank6 and on b (last
+                                // axis is always contiguous), so a_base + q and b_base + q are
+                                // the flat indices of (n, i, j, ch, p, q) and (k, ch, p, q);
+                                // q < KW is guaranteed by the enclosing for loop's bounds.
                                 let av = unsafe { *a_row.get_unchecked(a_base + q) };
                                 let bv = unsafe { *b_row.get_unchecked(b_base + q) };
                                 sums[k] += av * bv;
@@ -169,8 +169,8 @@ where
                     }
                 }
                 for k in 0..K {
-                    // SAFETY: n < N, i < H_OUT, j < W_OUT, k < K sont garantis par les bornes
-                    // des boucles for englobantes ; c vient d'être créé avec shape [N, H_OUT,
+                    // SAFETY: n < N, i < H_OUT, j < W_OUT, k < K are guaranteed by the
+                    // enclosing for loops' bounds; c was just created with shape [N, H_OUT,
                     // W_OUT, K].
                     unsafe { c.set_unchecked(n, i, j, k, sums[k]) };
                 }

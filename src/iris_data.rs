@@ -1,6 +1,6 @@
 // UCI Iris dataset — 150 samples, 4 features, 3 classes.
-// Format : ([sepal_length, sepal_width, petal_length, petal_width], class_index)
-// Classes : 0 = Setosa, 1 = Versicolor, 2 = Virginica
+// Format: ([sepal_length, sepal_width, petal_length, petal_width], class_index)
+// Classes: 0 = Setosa, 1 = Versicolor, 2 = Virginica
 pub const IRIS: [([f32; 4], usize); 150] = [
     // Setosa (0)
     ([5.1,3.5,1.4,0.2],0),([4.9,3.0,1.4,0.2],0),([4.7,3.2,1.3,0.2],0),
@@ -58,6 +58,6 @@ pub const IRIS: [([f32; 4], usize); 150] = [
     ([6.2,3.4,5.4,2.3],2),([5.9,3.0,5.1,1.8],2),
 ];
 
-// Min-max connus du dataset UCI pour normalisation dans [0, 1].
+// Known min/max of the UCI dataset, for normalization into [0, 1].
 pub const FEATURE_MIN: [f32; 4] = [4.3, 2.0, 1.0, 0.1];
 pub const FEATURE_MAX: [f32; 4] = [7.9, 4.4, 6.9, 2.5];

@@ -29,10 +29,10 @@ impl GradChecker {
         debug_assert_eq!(
             net.num_params(),
             N,
-            "N doit correspondre à net.num_params()"
+            "N must match net.num_params()"
         );
 
-        // Gradients analytiques
+        // Analytical gradients
         let (output, ctx) = net.forward(input);
         let (_, loss_grad) = loss_fn(output, target);
         let (_, grads) = net.backward(loss_grad, &ctx);
@@ -40,7 +40,7 @@ impl GradChecker {
         let mut offset = 0;
         Net::write_grads(&grads, &mut buf_ana, &mut offset);
 
-        // Gradients numériques (différences finies centrées)
+        // Numerical gradients (centered finite differences)
         let mut buf_num: [Scalar; N] = [0.0; N];
         for i in 0..N {
             let mut net_plus = net.clone();
@@ -56,7 +56,7 @@ impl GradChecker {
             buf_num[i] = (loss_plus - loss_minus) / (2.0 * eps);
         }
 
-        // Erreur relative : |num - ana| / max(|num|, |ana|, ε)
+        // Relative error: |num - ana| / max(|num|, |ana|, ε)
         let mut errors: [Scalar; N] = [0.0; N];
         for i in 0..N {
             let abs_num = fabs(buf_num[i]);

@@ -16,16 +16,16 @@ pub struct Tensor<
     pub(super) shape: (usize, usize),
 }
 
-/// Passe par le buffer brut (`get_raw_buffer`) plutôt que par un `#[derive]` :
-/// `S` (`StackStorage`/`HeapStorage`) n'a pas de raison d'implémenter
-/// `defmt::Format` lui-même, seul le contenu logé importe pour le log.
+/// Goes through the raw buffer (`get_raw_buffer`) rather than a `#[derive]`:
+/// `S` (`StackStorage`/`HeapStorage`) has no reason to implement
+/// `defmt::Format` itself, only the logged content matters for the log.
 #[cfg(feature = "defmt")]
 impl<const ROWS: usize, const COLS: usize, const NUMEL: usize, S: Storage<[Scalar; NUMEL]>>
     defmt::Format for Tensor<ROWS, COLS, NUMEL, S>
 {
     fn format(&self, fmt: defmt::Formatter) {
-        // `{}` générique plutôt que `{=[f32]}` : `Scalar` est `f32` ou `f64`
-        // selon la feature `f64`, et les deux implémentent `defmt::Format`.
+        // Generic `{}` rather than `{=[f32]}`: `Scalar` is `f32` or `f64`
+        // depending on the `f64` feature, and both implement `defmt::Format`.
         defmt::write!(
             fmt,
             "Tensor<{=usize}, {=usize}> {}",
@@ -140,8 +140,8 @@ impl<const ROWS: usize, const COLS: usize, const NUMEL: usize, S: Storage<[Scala
     /// pipeline, where the data doesn't exist as a compile-time-sized array in
     /// the first place.
     ///
-    /// Rends le `Vec` intact si sa longueur ne correspond pas à `NUMEL`, plutôt
-    /// que de le déverser dans un message de panique.
+    /// Hands the `Vec` back intact if its length doesn't match `NUMEL`,
+    /// rather than dumping it into a panic message.
     #[cfg(feature = "alloc")]
     pub fn from_vec(data: alloc::vec::Vec<Scalar>) -> Result<Self, alloc::vec::Vec<Scalar>>
     where
