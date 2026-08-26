@@ -31,7 +31,7 @@ cancellation setup.
   the mixed primary input.
 - Panel 2 vs 3: the ADALINE's noise estimate `y[n]` against the true
   noise `n0[n]`, very early (barely trained) vs converged: correlation
-  goes from 0.598 to 0.990.
+  goes from 0.549 to 0.986.
 - Panel 4: `e[n] = d[n] - y[n]` against the true clean signal, converged:
   this is the actual cancellation result.
 - Panel 5: cost per training step across the whole run, against the
@@ -41,11 +41,11 @@ cancellation setup.
 
 | | value |
 |---|---|
-| cost per `forward`+`backward`+`update` | 578 cycles ≈ 3.44 µs |
+| cost per `forward`+`backward`+`update` | 575 cycles ≈ 3.42 µs |
 | real-time budget at 8 kHz | 125 µs |
-| margin | 36.3× |
-| corr(y, n0), early → converged | 0.598 → 0.990 |
-| RMS \|e−s\|, early → converged | 0.351 → 0.059 |
+| margin | 36.5× |
+| corr(y, n0), early → converged | 0.549 → 0.986 |
+| RMS \|e−s\|, early → converged | 0.398 → 0.074 |
 
 A methodological note worth keeping, because it cost real debugging time:
 the first version of this benchmark used a single-frequency sine wave for
