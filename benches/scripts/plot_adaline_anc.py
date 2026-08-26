@@ -85,13 +85,26 @@ ax.legend(loc="upper right", fontsize=8)
 ax = axes[4]
 cycles_us = cycles / 168.0
 budget_us = 1e6 / FS
-ax.plot(t, cycles_us, color="#9467bd", linewidth=0.8, label="measured wall time (DWT)")
+mean_us = cycles_us.mean()
+margin = budget_us / mean_us
+ax.plot(t, cycles_us, color="#9467bd", linewidth=1.0, label="measured wall time (DWT)")
 ax.axhline(budget_us, color="red", linestyle="--", linewidth=1.2, label=f"real-time budget at {FS:.0f} Hz = {budget_us:.1f} us")
+ax.annotate(
+    f"{mean_us:.2f} us measured -- {margin:.1f}x margin",
+    xy=(t[len(t) // 2], mean_us),
+    xytext=(0, 10),
+    textcoords="offset points",
+    ha="center",
+    color="#9467bd",
+    fontsize=9,
+    fontweight="bold",
+)
 ax.set_title("5. Cost per training step (forward+backward+update) vs real-time budget, full run")
 ax.set_xlabel("time (s)")
-ax.set_ylabel("microseconds")
-ax.legend(loc="upper right", fontsize=8)
-ax.set_ylim(0, budget_us * 1.15)
+ax.set_ylabel("microseconds (log scale)")
+ax.set_yscale("log")
+ax.legend(loc="center right", fontsize=8)
+ax.set_ylim(mean_us * 0.5, budget_us * 1.8)
 
 fig.suptitle("ADALINE / LMS on STM32F446RE -- adaptive noise cancellation (real hardware measurements)", fontsize=13)
 fig.tight_layout(rect=[0, 0, 1, 0.97])

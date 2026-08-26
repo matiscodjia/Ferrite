@@ -67,8 +67,8 @@ nothing at runtime, at the price of requiring every shape to be static.
   full methodology and raw logs):
   - A 16-tap adaptive linear filter (`Linear<16,1,16>`, no hidden layer,
     an ADALINE per [Widrow & Hoff, 1960][widrow60]) trained online, one
-    sample at a time: **3.44 µs per `forward`+`backward`+`update`**, a
-    **36.3×** margin against the real-time budget at an 8 kHz sample rate
+    sample at a time: **3.42 µs per `forward`+`backward`+`update`**, a
+    **36.5×** margin against the real-time budget at an 8 kHz sample rate
     (bounds-checked indexing; see `docs/BENCHMARKS.md` for the unchecked-
     indexing variant, ~8% faster end to end, on a separate branch pending merge).
   - A `64 → 40 → 10` classifier, trained for 300 epochs entirely on-device:
